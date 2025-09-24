@@ -1,0 +1,17 @@
+app:
+  file_storage_dir: /tmp/itelma
+  allowed_file_types: # content-type to file extension
+    text/csv: csv
+
+server:
+  title: ITELMA
+  allow_origins: *
+
+db:
+  postgres:
+    pool_size: 20
+    max_overflow: 20
+
+logfire:
+  service_name: backend
+  environment: prod

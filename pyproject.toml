@@ -1,0 +1,105 @@
+[project]
+name = "itelma-backend"
+version = "0.1.0"
+authors = [
+    { name = "KruASe76", email = "kruanse@ya.ru" }
+]
+
+requires-python = ">=3.13"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "asyncpg>=0.30.0",
+    "fastapi[standard-no-fastapi-cloud-cli]>=0.117.1",
+    "logfire[fastapi,sqlalchemy]>=4.10.0",
+    "pydantic>=2.11.9",
+    "pydantic-config[yaml]>=0.3.0",
+    "sqlmodel>=0.0.25",
+    "typer>=0.19.2",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "ruff>=0.13.1",
+    "types-aiofiles>=24.1.0.20250822",
+]
+
+[[tool.uv.index]]
+name = "pydantic-config-custom"
+url = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/simple"
+
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+plugins = "pydantic.mypy"
+
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "A",     # flake8-builtins (builtin name shadowing)
+    "ANN",   # flake8-annotations
+    "ARG",   # flake8-unused-arguments
+    "ASYNC", # flake8-async
+    "B",     # flake8-bugbear (common bug causes)
+    "C4",    # flake8-comprehensions
+    "COM",   # flake8-commas
+    "D",     # pydocstyle
+    "DTZ",   # flake8-datetimez
+    "E",     # pycodestyle
+    "EXE",   # flake8-executable
+    "F",     # pyflakes
+    "FA",    # flake8-future-annotations
+    "FAST",  # FastAPI
+    "FBT",   # flake8-boolean-trap (disallow boolean positional arguments)
+    "FLY",   # pyflint
+    "FURB",  # refurb (use new language features)
+    "G",     # flake8-logging-format
+    "I",     # isort (imports)
+    "ICN",   # flake8-import-conventions
+    "ISC",   # flake8-implicit-str-concat
+    "LOG",   # flake8-logging
+    "N",     # pep8-naming
+    "PERF",  # perflint
+    "PIE",   # flake8-pie
+    "PL",    # pylint
+    "PT",    # flake8-pytest-style
+    "PTH",   # flake8-use-pathlib
+    "Q",     # flake8-quotes
+    "RET",   # flake8-return
+    "RSE",   # flake8-raise
+    "RUF",   # ruff-specific
+    "S",     # flake8-bandit (security)
+    "SIM",   # flake8-simpify
+    "SLF",   # flake8-self
+    "SLOT",  # flake8-slots
+    "T100",  # flake8-debugger
+    "TRY",   # tryceratops
+    "UP",    # pyupgrade (disallow deprecated language features)
+    "W",     # pycodestyle
+    "YTT",   # flake8-2020
+]
+ignore = [
+    "D1",    # allow undocumented entities
+    "D212",  # prefer D213 instead (google doc style override)
+    "D405",  # section names don't have to be capitalized
+    "PLR09", # disable complexity warnings
+]
+extend-select = [
+    "D213",  # multi-line docstring summary should start at the second line
+]
+fixable = ["ALL"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+line-ending = "lf"

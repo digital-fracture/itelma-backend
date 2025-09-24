@@ -1,0 +1,8 @@
+services:
+  backend:
+    image: registry.gitlab.com/kruase76/itelma-backend:latest
+    env_file:
+      - .env
+    volumes:
+      - ../resources:/app/resources
+    restart: always
