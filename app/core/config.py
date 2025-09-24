@@ -9,7 +9,7 @@ ENV_PREFIX = "ITELMA__"
 ENV_SEPARATOR = "__"
 
 RESOURCE_DIR = Path("resources")
-CONFIG_PATH = RESOURCE_DIR / "config.yaml"
+CONFIG_PATH = RESOURCE_DIR / "config.yml"
 
 
 class AppConfig(BaseModel):
@@ -25,11 +25,11 @@ class AppConfig(BaseModel):
 
 class ServerConfig(BaseModel):
     title: str
-    _allow_origins: str = Field(validation_alias="allow_origins", default="*")
+    allow_origins_raw: str = Field(validation_alias="allow_origins")
 
     @cached_property
     def allow_origins(self) -> list[str]:
-        return [origin.strip() for origin in self._allow_origins.split(",") if origin.strip()]
+        return [origin.strip() for origin in self.allow_origins_raw.split(",") if origin.strip()]
 
 
 class LogfireConfig(BaseModel):

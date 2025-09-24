@@ -13,10 +13,11 @@ RUN --mount=type=cache,target=$UV_CACHE_DIR \
     uv sync --no-install-project
 
 COPY app/ ./app
+COPY app.py ./
 RUN --mount=type=cache,target=$UV_CACHE_DIR \
     uv sync
 
 ENV APP_HOST=0.0.0.0
 ENV APP_PORT=8000
-CMD ["uv", "run", "app.py", "run"]
+CMD ["uv", "run", "app.py"]
 EXPOSE $APP_PORT

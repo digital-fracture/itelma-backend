@@ -14,7 +14,6 @@ from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
 from .model import GraphPoint, QueueMessage, QueueType, Session
 
 CHUNK_SIZE = 64 * 1024  # 64KB
-ALLOWED_TYPE_TO_EXTENSION = {"text/csv": "csv"}
 
 
 class EmulationService:
@@ -84,8 +83,8 @@ class EmulationService:
 
     @classmethod
     async def _save_temp_file(cls, uploaded_file: UploadFile, name: str) -> Path:
-        extension = cls._get_file_extension(uploaded_file)
-        path = config.app.file_storage_dir / f"{name}.{extension}"
+        suffix = cls._get_file_extension(uploaded_file)
+        path = config.app.file_storage_dir / f"{name}.{suffix}"
 
         async with aiofiles.open(path, "wb") as out_file:
             while True:
@@ -100,13 +99,12 @@ class EmulationService:
 
     @classmethod
     def _get_file_extension(cls, file: UploadFile) -> str:
-        if file.content_type in ALLOWED_TYPE_TO_EXTENSION:
-            return ALLOWED_TYPE_TO_EXTENSION[file.content_type]
+        if file.content_type in config.app.allowed_file_types:
+            return config.app.allowed_file_types[file.content_type]
 
         if file.filename and (
-            (file_extension := file.filename.rsplit(".", 1)[-1])
-            in ALLOWED_TYPE_TO_EXTENSION.values()
+            (suffix := file.filename.rsplit(".", 1)[-1]) in config.app.allowed_file_types.values()
         ):
-            return file_extension
+            return suffix
 
         raise UnknownFileTypeError(file)

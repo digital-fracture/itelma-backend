@@ -331,7 +331,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard-no-fastapi-cloud-cli"], specifier = ">=0.117.1" },
     { name = "logfire", extras = ["fastapi", "sqlalchemy"], specifier = ">=4.10.0" },
     { name = "pydantic", specifier = ">=2.11.9" },
-    { name = "pydantic-config", extras = ["yaml"], specifier = ">=0.3.0" },
+    { name = "pydantic-config", extras = ["yaml"], specifier = ">=0.3.1" },
     { name = "sqlmodel", specifier = ">=0.0.25" },
     { name = "typer", specifier = ">=0.19.2" },
 ]
@@ -668,14 +668,14 @@ wheels = [
 
 [[package]]
 name = "pydantic-config"
-version = "0.3.0"
+version = "0.3.1"
 source = { registry = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/simple" }
 dependencies = [
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/files/4227beaf6ce02b4b237c551a5c4a2a996dd716402b10be56127b62fba5cc8f82/pydantic_config-0.3.0.tar.gz", hash = "sha256:4227beaf6ce02b4b237c551a5c4a2a996dd716402b10be56127b62fba5cc8f82" }
+sdist = { url = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/files/e85c2d27b6463fa10729edee84af8b26fcaba83c0ce54d22e3ff5e5ec4aed225/pydantic_config-0.3.1.tar.gz", hash = "sha256:e85c2d27b6463fa10729edee84af8b26fcaba83c0ce54d22e3ff5e5ec4aed225" }
 wheels = [
-    { url = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/files/5a56ad54dfe8e327f0178e70ce286153c8bcbf273ed8b9ae57e9d88f699515bf/pydantic_config-0.3.0-py3-none-any.whl", hash = "sha256:5a56ad54dfe8e327f0178e70ce286153c8bcbf273ed8b9ae57e9d88f699515bf" },
+    { url = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/files/6d4209773bbf4d8c37f01b1d874422316122084b9272368a26525f07eb52dc7f/pydantic_config-0.3.1-py3-none-any.whl", hash = "sha256:6d4209773bbf4d8c37f01b1d874422316122084b9272368a26525f07eb52dc7f" },
 ]
 
 [package.optional-dependencies]
