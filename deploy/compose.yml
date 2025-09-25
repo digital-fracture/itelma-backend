@@ -1,6 +1,6 @@
 services:
   backend:
-    image: registry.gitlab.com/kruase76/itelma-backend:latest
+    image: registry.gitlab.com/digital-fracture/itelma-backend:latest
     env_file:
       - .env
     volumes:
