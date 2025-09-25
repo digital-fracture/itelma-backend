@@ -17,7 +17,14 @@ CHUNK_SIZE = 64 * 1024  # 64KB
 
 
 class EmulationService:
-    sessions: ClassVar[dict[str, Session]] = {}
+    sessions: ClassVar[dict[str, Session]] = {
+        "qwerty": Session(
+            session_id="qwerty",
+            file_path=Path(
+                "resources/20250908-07500001_1.csv",
+            ),
+        ),
+    }
 
     @classmethod
     @logfire.instrument(record_return=True)
@@ -69,6 +76,8 @@ class EmulationService:
         start_time = current_loop.time()
 
         async with aiofiles.open(file_path) as file:
+            await file.readline()  # skip csv header
+
             async for line in file:
                 time, value = map(float, line.strip().split(","))
                 message = QueueMessage(graph_point=GraphPoint(time=time, value=value))

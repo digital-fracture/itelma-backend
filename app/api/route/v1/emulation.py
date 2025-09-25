@@ -38,6 +38,7 @@ async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
     except SessionNotFoundError as exc:
         raise WebSocketException(code=4001, reason="Session not found") from exc
 
+    # noinspection PyBroadException
     try:
         while True:
             message = await queue.get()
@@ -50,6 +51,10 @@ async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
 
     except WebSocketDisconnect:
         logfire.exception("WebSocket disconnected", session_id=session_id)
+
+    except Exception:
+        logfire.exception("Internal error in WebSocket", session_id=session_id)
+        await websocket.close(code=1011, reason="Internal error")
 
     finally:
         await EmulationService.close_session(session_id)
