@@ -4,31 +4,15 @@ stages:
 docker-build-push:
   stage: build
   image:
-    name: moby/buildkit:rootless
+    name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   variables:
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
-    CACHE_IMAGE: $CI_REGISTRY_IMAGE:cache
-    PLATFORMS: linux/amd64,linux/arm64
-  before_script:
-    - mkdir -p ~/.docker
-    - |
-      echo "{
-        \"auths\": {
-          \"$CI_REGISTRY\": {
-            \"username\":\"$CI_REGISTRY_USER\",
-            \"password\":\"$CI_REGISTRY_PASSWORD\"
-          }
-        }
-      }" > ~/.docker/config.json
+    KANIKO_DESTINATIONS: >-
+      --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+      --destination $CI_REGISTRY_IMAGE:latest
+    GODEBUG: http2client=0  # slow image upload workaround
   script:
-    - |
-      buildctl-daemonless.sh build \
-        --frontend dockerfile.v0 \
-        --local context=. \
-        --local dockerfile=deploy/Dockerfile \
-        --opt platform=$PLATFORMS \
-        --import-cache type=registry,ref=$CACHE_IMAGE \
-        --export-cache type=registry,ref=$CACHE_IMAGE \
-        --output type=image,name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA,push=true \
-        --output type=image,name=$CI_REGISTRY_IMAGE:latest,push=true
+    - /kaniko/executor
+      --context $CI_PROJECT_DIR
+      --dockerfile $CI_PROJECT_DIR/deploy/Dockerfile
+      $KANIKO_DESTINATIONS
