@@ -1,0 +1,21 @@
+services:
+  backend:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+    volumes:
+      - ../app:/app/app
+      - ../app.py:/app/app.py
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../uv.lock:/app/uv.lock
+      - ${UV_CACHE_DIR}:${UV_CACHE_DIR}
+    working_dir: /app
+    command: uv run app.py --reload
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+    ports:
+      - 8000:8000
+    restart: always
+
+  postgres:
+    ports:
+      - ${POSTGRES_DEV_PORT}:5432
