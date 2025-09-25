@@ -11,7 +11,7 @@ from fastapi import UploadFile
 from app.core import config
 from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
 
-from .model import GraphPoint, QueueMessage, QueueType, Session
+from .model import PlotPoint, QueueMessage, QueueType, Session
 
 CHUNK_SIZE = 64 * 1024  # 64KB
 
@@ -80,7 +80,7 @@ class EmulationService:
 
             async for line in file:
                 time, value = map(float, line.strip().split(","))
-                message = QueueMessage(graph_point=GraphPoint(time=time, value=value))
+                message = QueueMessage(plot_point=PlotPoint(time=time, value=value))
 
                 current_time = current_loop.time()
                 wait_time = start_time + time - current_time

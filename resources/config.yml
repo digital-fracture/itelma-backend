@@ -6,6 +6,7 @@ app:
 server:
   title: ITELMA
   allow_origins: "*"
+  ws_stop_message: stop
 
 db:
   postgres:

@@ -26,6 +26,7 @@ class AppConfig(BaseModel):
 class ServerConfig(BaseModel):
     title: str
     allow_origins_raw: str = Field(validation_alias="allow_origins")
+    ws_stop_message: str
 
     @cached_property
     def allow_origins(self) -> list[str]:

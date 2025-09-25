@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 
-class GraphPoint(BaseModel):
+class PlotPoint(BaseModel):
     time: float
     value: float
 
@@ -15,7 +15,7 @@ class Predictions(BaseModel):  # WIP
 
 
 class QueueMessage(BaseModel):
-    graph_point: GraphPoint
+    plot_point: PlotPoint
     predictions: Predictions | None = None
 
 

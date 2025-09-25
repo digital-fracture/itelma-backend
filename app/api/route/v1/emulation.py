@@ -1,3 +1,6 @@
+import asyncio
+import contextlib
+
 import logfire
 from fastapi import (
     APIRouter,
@@ -9,6 +12,7 @@ from fastapi import (
 )
 
 from app.api.schema.emulation import EmulationUploadResponse
+from app.core import config
 from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
 from app.service import EmulationService
 
@@ -38,6 +42,8 @@ async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
     except SessionNotFoundError as exc:
         raise WebSocketException(code=4001, reason="Session not found") from exc
 
+    close_task = asyncio.create_task(_close_on_client_request(websocket))
+
     # noinspection PyBroadException
     try:
         while True:
@@ -57,4 +63,17 @@ async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
         await websocket.close(code=1011, reason="Internal error")
 
     finally:
+        close_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await close_task
+
         await EmulationService.close_session(session_id)
+
+
+async def _close_on_client_request(websocket: WebSocket) -> None:
+    while True:
+        message = await websocket.receive_text()
+
+        if message == config.server.ws_stop_message:
+            await websocket.close(code=1000, reason="Client requested to close the connection")
+            break
