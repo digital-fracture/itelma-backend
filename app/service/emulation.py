@@ -17,14 +17,7 @@ CHUNK_SIZE = 64 * 1024  # 64KB
 
 
 class EmulationService:
-    sessions: ClassVar[dict[str, Session]] = {
-        "qwerty": Session(
-            session_id="qwerty",
-            file_path=Path(
-                "resources/20250908-07500001_1.csv",
-            ),
-        ),
-    }
+    sessions: ClassVar[dict[str, Session]] = {}
 
     @classmethod
     @logfire.instrument(record_return=True)
