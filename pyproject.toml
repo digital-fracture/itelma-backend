@@ -85,10 +85,11 @@ select = [
     "YTT",   # flake8-2020
 ]
 ignore = [
-    "D1",    # allow undocumented entities
-    "D212",  # prefer D213 instead (google doc style override)
-    "D405",  # section names don't have to be capitalized
-    "PLR09", # disable complexity warnings
+    "COM812", # redundant because of ruff format
+    "D1",     # allow undocumented entities
+    "D212",   # prefer D213 instead (google doc style override)
+    "D405",   # section names don't have to be capitalized
+    "PLR09",  # disable complexity warnings
 ]
 extend-select = [
     "D213",  # multi-line docstring summary should start at the second line

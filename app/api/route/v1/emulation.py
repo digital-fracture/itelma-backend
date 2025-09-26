@@ -25,16 +25,16 @@ emulation_router = APIRouter(prefix="/emulation", tags=["emulation"])
     "/upload",
     status_code=status.HTTP_201_CREATED,
     responses=build_responses(UnknownFileTypeError),
-    summary="Upload file with data for emulation",
+    summary="Upload files with data for emulation",
 )
-async def emulation_upload(file: UploadFile) -> EmulationUploadResponse:
-    session_id = await EmulationService.create_session(file)
+async def emulation_upload(files: list[UploadFile]) -> EmulationUploadResponse:
+    session_id = await EmulationService.create_session(files)
 
     return EmulationUploadResponse(session_id=session_id)
 
 
 @emulation_router.websocket("/connect/{session_id}")
-async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
+async def emulation_connect(session_id: str, websocket: WebSocket) -> None:
     await websocket.accept()
 
     try:
@@ -44,19 +44,14 @@ async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
 
     close_task = asyncio.create_task(_close_on_client_request(websocket))
 
-    # noinspection PyBroadException
     try:
-        while True:
-            message = await queue.get()
-
-            if message is None:  # the end
-                await websocket.close(code=1000, reason="Emulation finished")
-                break
-
+        while message := await queue.get():
             await websocket.send_json(message.model_dump_json())
 
-    except WebSocketDisconnect:
-        logfire.exception("WebSocket disconnected", session_id=session_id)
+        await websocket.close(code=1000, reason="Emulation finished")
+
+    except (WebSocketDisconnect, RuntimeError):
+        logfire.info("WebSocket disconnected", session_id=session_id)
 
     except Exception:
         logfire.exception("Internal error in WebSocket", session_id=session_id)
@@ -71,9 +66,13 @@ async def emulation_connect(websocket: WebSocket, session_id: str) -> None:
 
 
 async def _close_on_client_request(websocket: WebSocket) -> None:
-    while True:
-        message = await websocket.receive_text()
+    try:
+        while True:
+            message = await websocket.receive_text()
 
-        if message == config.server.ws_stop_message:
-            await websocket.close(code=1000, reason="Client requested to close the connection")
-            break
+            if message == config.server.ws_stop_message:
+                await websocket.close(code=1000, reason="Client requested to close the connection")
+                break
+
+    except (WebSocketDisconnect, RuntimeError):
+        pass

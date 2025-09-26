@@ -15,7 +15,7 @@ def _build_responses_internal(
             "model": create_model(
                 exception.__name__,
                 message=(str, exception.message),
-            ),
+            )
         }
         for exception in exceptions
     }

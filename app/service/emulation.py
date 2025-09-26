@@ -11,7 +11,7 @@ from fastapi import UploadFile
 from app.core import config
 from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
 
-from .model import PlotPoint, QueueMessage, QueueType, Session
+from .model import Plot, Point, QueueMessage, QueueType, Session
 
 CHUNK_SIZE = 64 * 1024  # 64KB
 
@@ -21,11 +21,11 @@ class EmulationService:
 
     @classmethod
     @logfire.instrument(record_return=True)
-    async def create_session(cls, file: UploadFile) -> str:
+    async def create_session(cls, files: list[UploadFile]) -> str:
         session_id = uuid4().hex
 
-        saved_path = await cls._save_temp_file(file, session_id)
-        cls.sessions[session_id] = Session(session_id=session_id, file_path=saved_path)
+        saved_paths = await asyncio.gather(*(cls._save_temp_file(file) for file in files))
+        cls.sessions[session_id] = Session(session_id=session_id, files=saved_paths)
 
         return session_id
 
@@ -36,9 +36,24 @@ class EmulationService:
             raise SessionNotFoundError(session_id)
 
         if session.queue is None:
-            session.queue = asyncio.Queue()
-            session.emulation_task = asyncio.create_task(
-                cls._emulate_streaming(session.file_path, session.queue),
+            queue = session.queue = asyncio.Queue()
+            start_time = asyncio.get_event_loop().time()
+
+            session.emulation_task_gather = asyncio.gather(
+                *(
+                    asyncio.create_task(
+                        cls._emulate_streaming(
+                            index=index,
+                            file_path=file,
+                            queue=queue,
+                            start_time=start_time,
+                        )
+                    )
+                    for index, file in enumerate(session.files)
+                )
+            )
+            session.emulation_task_gather.add_done_callback(
+                lambda _: asyncio.create_task(queue.put(None))
             )
 
         return session.queue
@@ -49,31 +64,37 @@ class EmulationService:
         if not (session := cls.sessions.get(session_id)):
             raise SessionNotFoundError(session_id)
 
-        if session.emulation_task:
-            session.emulation_task.cancel()
+        if session.emulation_task_gather:
+            session.emulation_task_gather.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await session.emulation_task
+                await session.emulation_task_gather
 
         if session.queue:
             await session.queue.put(None)  # the end
 
-        if session.file_path.exists():
-            session.file_path.unlink(missing_ok=True)
+        for file in session.files:
+            file.unlink(missing_ok=True)
 
-        cls.sessions.pop(session_id)
+        del cls.sessions[session_id]
 
     @classmethod
     @logfire.instrument
-    async def _emulate_streaming(cls, file_path: Path, queue: QueueType) -> None:
+    async def _emulate_streaming(
+        cls, index: int, file_path: Path, queue: QueueType, start_time: float
+    ) -> None:
         current_loop = asyncio.get_event_loop()
-        start_time = current_loop.time()
 
         async with aiofiles.open(file_path) as file:
             await file.readline()  # skip csv header
 
             async for line in file:
                 time, value = map(float, line.strip().split(","))
-                message = QueueMessage(plot_point=PlotPoint(time=time, value=value))
+                message = QueueMessage(
+                    plot=Plot(
+                        index=index,
+                        point=Point(time=time, value=value),
+                    )
+                )
 
                 current_time = current_loop.time()
                 wait_time = start_time + time - current_time
@@ -81,12 +102,10 @@ class EmulationService:
                 await asyncio.sleep(wait_time)
                 await queue.put(message)
 
-        await queue.put(None)  # the end
-
     @classmethod
-    async def _save_temp_file(cls, uploaded_file: UploadFile, name: str) -> Path:
+    async def _save_temp_file(cls, uploaded_file: UploadFile) -> Path:
         suffix = cls._get_file_extension(uploaded_file)
-        path = config.app.file_storage_dir / f"{name}.{suffix}"
+        path = config.app.file_storage_dir / f"{uuid4().hex}.{suffix}"
 
         async with aiofiles.open(path, "wb") as out_file:
             while True:
