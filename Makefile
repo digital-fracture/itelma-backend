@@ -3,7 +3,7 @@ DEPLOY_DIR := deploy
 
 all: prod
 
-prod: setup-env run
+prod: setup-env pull run
 dev: setup-env run-dev
 
 restart: stop prod
@@ -21,6 +21,9 @@ stop:
 
 clean:
 	cd $(DEPLOY_DIR) && docker compose -f compose.yml -f compose.dev.yml down --rmi local -v
+
+pull:
+	cd $(DEPLOY_DIR) && docker compose pull backend
 
 
 $(DEPLOY_DIR)/.env:

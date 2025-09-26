@@ -1,3 +1,5 @@
+name: itelma
+
 services:
   backend:
     image: registry.gitlab.com/digital-fracture/itelma-backend:latest
