@@ -1,5 +1,9 @@
 from pathlib import Path
 
 
+class StorageConstants:
+    directory = Path("storage")
+
+
 class Constants:
-    STORAGE_DIR = Path("storage")
+    storage = StorageConstants

@@ -105,7 +105,7 @@ class EmulationService:
     @classmethod
     async def _save_temp_file(cls, uploaded_file: UploadFile) -> Path:
         suffix = cls._get_file_extension(uploaded_file)
-        path = Constants.STORAGE_DIR / f"{uuid4().hex}.{suffix}"
+        path = Constants.storage.directory / f"{uuid4().hex}.{suffix}"
 
         async with aiofiles.open(path, "wb") as out_file:
             while True:

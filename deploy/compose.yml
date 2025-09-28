@@ -7,4 +7,5 @@ services:
       - .env
     volumes:
       - ../resources:/app/resources
+      - ../storage:/app/storage
     restart: always

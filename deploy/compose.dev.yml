@@ -3,12 +3,11 @@ services:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
     volumes:
       - ../app:/app/app
-      - ../app.py:/app/app.py
       - ../pyproject.toml:/app/pyproject.toml
       - ../uv.lock:/app/uv.lock
       - ${UV_CACHE_DIR}:${UV_CACHE_DIR}
     working_dir: /app
-    command: uv run app.py --reload
+    command: uv run -m app.cli --reload
     environment:
       APP_HOST: 0.0.0.0
       APP_PORT: 8000

@@ -1,3 +1,10 @@
+### Custom
+/storage/
+
+# Makefile auxiliary target files
+/.setup.stamp
+
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
