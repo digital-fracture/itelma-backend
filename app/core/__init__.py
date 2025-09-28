@@ -1,3 +1,4 @@
-from .config import Config
+__all__ = ["Config", "Constants"]
 
-config = Config()
+from .config import Config
+from .constants import Constants

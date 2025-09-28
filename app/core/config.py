@@ -1,9 +1,8 @@
 from functools import cached_property
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from pydantic_config import SettingsConfig, SettingsModel
-from sqlalchemy import URL
 
 ENV_PREFIX = "ITELMA__"
 ENV_SEPARATOR = "__"
@@ -13,14 +12,7 @@ CONFIG_PATH = RESOURCE_DIR / "config.yml"
 
 
 class AppConfig(BaseModel):
-    file_storage_dir: Path
     allowed_file_types: dict[str, str]
-
-    @field_validator("file_storage_dir", mode="after")
-    @classmethod
-    def create_storage_dir(cls, path: Path) -> Path:
-        path.mkdir(parents=True, exist_ok=True)
-        return path
 
 
 class ServerConfig(BaseModel):
@@ -38,37 +30,10 @@ class LogfireConfig(BaseModel):
     environment: str
 
 
-class PostgresConfig(BaseModel):
-    host: str
-    port: int
-    db: str
-    user: str
-    password: str
-
-    pool_size: int
-    max_overflow: int
-
-    @cached_property
-    def url(self) -> URL:
-        return URL.create(
-            drivername="postgresql+asyncpg",
-            username=self.user,
-            password=self.password,
-            host=self.host,
-            port=self.port,
-            database=self.db,
-        )
-
-
-class DBConfig(BaseModel):
-    postgres: PostgresConfig
-
-
-class Config(SettingsModel):
+class ConfigModel(SettingsModel):
     app: AppConfig
     server: ServerConfig
     logfire: LogfireConfig
-    db: DBConfig
 
     model_config = SettingsConfig(
         config_merge=True,
@@ -80,3 +45,6 @@ class Config(SettingsModel):
         config_file=CONFIG_PATH,
         extra="allow",
     )
+
+
+Config = ConfigModel()

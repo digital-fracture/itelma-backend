@@ -11,8 +11,8 @@ from fastapi import (
     status,
 )
 
-from app.api.schema.emulation import EmulationUploadResponse
-from app.core import config
+from app.api.schema import EmulationUploadResponse
+from app.core import Config
 from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
 from app.service import EmulationService
 
@@ -70,7 +70,7 @@ async def _close_on_client_request(websocket: WebSocket) -> None:
         while True:
             message = await websocket.receive_text()
 
-            if message == config.server.ws_stop_message:
+            if message == Config.server.ws_stop_message:
                 await websocket.close(code=1000, reason="Client requested to close the connection")
                 break
 

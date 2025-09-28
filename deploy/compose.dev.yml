@@ -15,7 +15,3 @@ services:
     ports:
       - 8000:8000
     restart: always
-
-  postgres:
-    ports:
-      - ${POSTGRES_DEV_PORT}:5432

@@ -20,4 +20,6 @@ RUN --mount=type=cache,target=$UV_CACHE_DIR \
 ENV APP_HOST=0.0.0.0
 ENV APP_PORT=8000
 CMD ["uv", "run", "app.py"]
+
+VOLUME /app/storage
 EXPOSE $APP_PORT

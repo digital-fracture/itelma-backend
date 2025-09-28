@@ -2,13 +2,13 @@ __all__ = ["app"]
 
 import logfire
 
-from app.core import config
+from app.core import Config
 
 from .api import app
 
 logfire.configure(
-    service_name=config.logfire.service_name,
-    environment=config.logfire.environment,
+    service_name=Config.logfire.service_name,
+    environment=Config.logfire.environment,
     send_to_logfire="if-token-present",
     distributed_tracing=False,
 )

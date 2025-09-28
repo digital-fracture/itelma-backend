@@ -1,5 +1,5 @@
-from pydantic import BaseModel
+from .util import BaseSchema
 
 
-class EmulationUploadResponse(BaseModel):
+class EmulationUploadResponse(BaseSchema):
     session_id: str

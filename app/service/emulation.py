@@ -8,7 +8,7 @@ import aiofiles
 import logfire
 from fastapi import UploadFile
 
-from app.core import config
+from app.core import Config, Constants
 from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
 
 from .model import Plot, Point, QueueMessage, QueueType, Session
@@ -105,7 +105,7 @@ class EmulationService:
     @classmethod
     async def _save_temp_file(cls, uploaded_file: UploadFile) -> Path:
         suffix = cls._get_file_extension(uploaded_file)
-        path = config.app.file_storage_dir / f"{uuid4().hex}.{suffix}"
+        path = Constants.STORAGE_DIR / f"{uuid4().hex}.{suffix}"
 
         async with aiofiles.open(path, "wb") as out_file:
             while True:
@@ -120,11 +120,11 @@ class EmulationService:
 
     @classmethod
     def _get_file_extension(cls, file: UploadFile) -> str:
-        if file.content_type in config.app.allowed_file_types:
-            return config.app.allowed_file_types[file.content_type]
+        if file.content_type in Config.app.allowed_file_types:
+            return Config.app.allowed_file_types[file.content_type]
 
         if file.filename and (
-            (suffix := file.filename.rsplit(".", 1)[-1]) in config.app.allowed_file_types.values()
+            (suffix := file.filename.rsplit(".", 1)[-1]) in Config.app.allowed_file_types.values()
         ):
             return suffix
 
