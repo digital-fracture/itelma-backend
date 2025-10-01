@@ -14,10 +14,15 @@ CONFIG_PATH = RESOURCE_DIR / "config.yml"
 class ServerConfig(BaseModel):
     title: str
     allow_origins_raw: str = Field(validation_alias="allow_origins")
+    openapi_tag_list: list[str] = Field(validation_alias="openapi_tags")
 
     @cached_property
     def allow_origins(self) -> list[str]:
         return [origin.strip() for origin in self.allow_origins_raw.split(",") if origin.strip()]
+
+    @cached_property
+    def openapi_tags(self) -> list[dict[str, str]]:
+        return [{"name": tag} for tag in self.openapi_tag_list]
 
 
 class LogfireConfig(BaseModel):

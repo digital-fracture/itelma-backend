@@ -26,7 +26,7 @@ class PatientStorage:
     @logfire.instrument
     async def initialize(cls) -> None:
         async with LockManager.read(Lock.patient_list):
-            cls._id_to_name = await util.load_yaml(Paths.patient_names_file) or {}
+            cls._id_to_name = await util.load_yaml(Paths.patient_names_file)
 
     @classmethod
     @logfire.instrument(record_return=True)

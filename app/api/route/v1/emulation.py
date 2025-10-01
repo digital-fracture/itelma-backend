@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 
 from fastapi import APIRouter, WebSocket
+from pydantic import ValidationError
 
 from app.core.exceptions import EmulationAlreadyStartedError, EmulationNotFoundError
 from app.model import EmulationMessageIn, EmulationQueueIn, EmulationQueueOut
@@ -16,6 +17,8 @@ emulation_router = APIRouter(
 @emulation_router.websocket("/start")
 async def emulation_start(websocket: WebSocket, patient_id: int, examination_id: int) -> None:
     try:
+        queue_out: EmulationQueueOut
+        queue_in: EmulationQueueIn
         async with EmulationService.new(patient_id, examination_id) as (queue_out, queue_in):
             await websocket.accept()
 
@@ -60,4 +63,5 @@ async def _sender(websocket: WebSocket, queue_out: EmulationQueueOut) -> None:
 
 async def _receiver(websocket: WebSocket, queue_in: EmulationQueueIn) -> None:
     while raw_message := await websocket.receive_json():
-        await queue_in.put_item(EmulationMessageIn.model_validate(raw_message))
+        with contextlib.suppress(ValidationError):
+            await queue_in.put_item(EmulationMessageIn.model_validate(raw_message))

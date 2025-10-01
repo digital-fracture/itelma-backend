@@ -29,6 +29,10 @@ medical:
 server:
   title: ITELMA
   allow_origins: "*"
+  openapi_tags:
+    - patients
+    - examinations
+    - emulation
 
 logfire:
   service_name: backend

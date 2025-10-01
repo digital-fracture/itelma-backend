@@ -5,7 +5,6 @@ from pathlib import Path
 import aiofiles
 import aiofiles.os
 import logfire
-from async_unzip.unzipper import unzip  # type: ignore
 from fastapi import UploadFile
 
 from app.core import Paths
@@ -45,20 +44,26 @@ class ExaminationStorage:
     @logfire.instrument(record_return=True)
     async def save_uploaded(patient_id: int, examination_upload_file: UploadFile) -> Examination:
         async with LockManager.write(Lock.patient_examination_list(patient_id)):
-            examination_id = max(
-                map(int, await aiofiles.os.listdir(Paths.all_examinations_dir(patient_id)))
-            )
-            await aiofiles.os.makedirs(
-                examination_dir := Paths.examination_dir(patient_id, examination_id)
+            examination_id = (
+                max(
+                    map(int, await aiofiles.os.listdir(Paths.all_examinations_dir(patient_id))),
+                    default=0,
+                )
+                + 1
             )
 
         zip_path = await util.save_temp_file(examination_upload_file)
+        examination_dir = Paths.examination_dir(patient_id, examination_id)
 
         async with LockManager.write(Lock.patient_examination(patient_id, examination_id)):
-            await unzip(zip_path, examination_dir)
+            await util.unzip(zip_path, examination_dir)
+            await asyncio.gather(
+                util.rename_to_numbers(Paths.examination_bpm_dir(patient_id, examination_id)),
+                util.rename_to_numbers(Paths.examination_uterus_dir(patient_id, examination_id)),
+            )
 
             metadata = ExaminationMetadata(
-                date=datetime.datetime.now(tz=datetime.UTC).astimezone(),
+                date=datetime.datetime.now(tz=datetime.UTC).astimezone().date(),
                 part_count=len(
                     await aiofiles.os.listdir(Paths.examination_bpm_dir(patient_id, examination_id))
                 ),

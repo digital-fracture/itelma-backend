@@ -8,6 +8,6 @@ from app.storage.lifespan import build_storage
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    build_storage()
+    await build_storage()
 
     yield

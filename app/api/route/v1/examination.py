@@ -20,7 +20,7 @@ examination_router = APIRouter(prefix="/patients/{patient_id}/examinations", tag
     "",
     status_code=status.HTTP_201_CREATED,
     responses=build_responses(PatientNotFoundError, UnknownFileTypeError),
-    summary="Upload a new examination for a patient",
+    summary="Upload a new examination for a patient (and create new empty patient if needed)",
 )
 async def create_examination(
     patient_id: int, file: Annotated[UploadFile, File(media_type="application/zip")]
@@ -52,7 +52,7 @@ async def get_examination(
     responses=build_responses(
         PatientNotFoundError, ExaminationNotFoundError, ExaminationPartNotFoundError
     ),
-    summary="Retrieve data for a specific part of an examination",
+    summary="Retrieve data of a specific examination part",
 )
 async def get_examination_part(
     patient_id: int, examination_id: int, part_index: int
