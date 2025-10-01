@@ -23,8 +23,8 @@ class BloodGasItem(BaseModel):
     @cached_property
     def unit(self) -> str:
         return (
-            Config.medical.blood_gas[self.name].unit
-            if self.name in Config.medical.blood_gas
+            Config.medical.blood_gas[self.name.lower()].unit
+            if self.name.lower() in Config.medical.blood_gas
             else ""
         )
 
