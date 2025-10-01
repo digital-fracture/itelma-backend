@@ -4,6 +4,7 @@ import asyncio
 import shutil
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from enum import StrEnum
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -112,3 +113,10 @@ def _safe_name(name: str) -> Path | None:
     path = Path(name)
     parts = [part for part in path.parts if part not in ("", ".", "..")]
     return Path(*parts) if parts else None
+
+
+def _represent_strenum(dumper: yaml.SafeDumper, data: StrEnum) -> yaml.ScalarNode:
+    return dumper.represent_str(data.value)
+
+
+yaml.SafeDumper.add_multi_representer(StrEnum, _represent_strenum)

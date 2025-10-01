@@ -69,7 +69,8 @@ class ExaminationStorage:
                 ),
             )
             await util.dump_yaml(
-                metadata.model_dump(), Paths.examination_metadata_file(patient_id, examination_id)
+                metadata.model_dump(exclude_unset=True),
+                Paths.examination_metadata_file(patient_id, examination_id),
             )
             await util.create_empty(Paths.examination_predictions_file(patient_id, examination_id))
 

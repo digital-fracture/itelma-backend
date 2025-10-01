@@ -54,7 +54,10 @@ class PatientStorage:
             await aiofiles.os.makedirs(Paths.patient_dir(patient_id))
             await aiofiles.os.makedirs(Paths.all_examinations_dir(patient_id))
 
-            await util.dump_yaml(patient.info.model_dump(), Paths.patient_info_file(patient_id))
+            await util.dump_yaml(
+                patient.info.model_dump(exclude_unset=True),
+                Paths.patient_info_file(patient_id),
+            )
             await util.create_empty(Paths.patient_predictions_file(patient_id))
 
         return Patient(id=patient_id, name=patient.name, info=patient.info)
@@ -103,4 +106,4 @@ class PatientStorage:
                     update=patient_update.info.model_dump(exclude_unset=True)
                 )
 
-                await util.dump_yaml(updated_info.model_dump(), info_path)
+                await util.dump_yaml(updated_info.model_dump(exclude_unset=True), info_path)
