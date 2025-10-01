@@ -10,9 +10,14 @@ docker-build-push:
     KANIKO_DESTINATIONS: >-
       --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
       --destination $CI_REGISTRY_IMAGE:latest
+    CACHE_REPO: $CI_REGISTRY_IMAGE/cache:kaniko
     GODEBUG: http2client=0  # slow image upload workaround
   script:
     - /kaniko/executor
+      --cache=true
+      --cache-repo $CACHE_REPO
+      --cache-copy-layers
+      --cleanup
       --context $CI_PROJECT_DIR
       --dockerfile $CI_PROJECT_DIR/deploy/Dockerfile
       $KANIKO_DESTINATIONS
