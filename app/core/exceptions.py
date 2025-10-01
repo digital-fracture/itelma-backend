@@ -20,9 +20,47 @@ class UnknownFileTypeError(AppBaseError):
         super().__init__({"filename": file.filename, "content_type": file.content_type})
 
 
-class SessionNotFoundError(AppBaseError):
+class PatientNotFoundError(AppBaseError):
     status_code = status.HTTP_404_NOT_FOUND
-    message = "Session not found"
+    message = "Patient not found"
 
-    def __init__(self, session_id: str) -> None:
-        super().__init__({"session_id": session_id})
+    def __init__(self, patient_id: int) -> None:
+        super().__init__(details={"patient_id": patient_id})
+
+
+class ExaminationNotFoundError(AppBaseError):
+    status_code = status.HTTP_404_NOT_FOUND
+    message = "Examination not found"
+
+    def __init__(self, patient_id: int, examination_id: int) -> None:
+        super().__init__(details={"patient_id": patient_id, "examination_id": examination_id})
+
+
+class ExaminationPartNotFoundError(AppBaseError):
+    status_code = status.HTTP_404_NOT_FOUND
+    message = "Examination part not found"
+
+    def __init__(self, patient_id: int, examination_id: int, part_index: int) -> None:
+        super().__init__(
+            details={
+                "patient_id": patient_id,
+                "examination_id": examination_id,
+                "part_index": part_index,
+            }
+        )
+
+
+class EmulationAlreadyStartedError(AppBaseError):
+    status_code = 4001
+    message = "Emulation of this examination already started"
+
+    def __init__(self, patient_id: int, examination_id: int) -> None:
+        super().__init__(details={"patient_id": patient_id, "examination_id": examination_id})
+
+
+class EmulationNotFoundError(AppBaseError):
+    status_code = 4002
+    message = "Emulation of this examination not found"
+
+    def __init__(self, patient_id: int, examination_id: int) -> None:
+        super().__init__(details={"patient_id": patient_id, "examination_id": examination_id})

@@ -11,14 +11,9 @@ RESOURCE_DIR = Path("resources")
 CONFIG_PATH = RESOURCE_DIR / "config.yml"
 
 
-class AppConfig(BaseModel):
-    allowed_file_types: dict[str, str]
-
-
 class ServerConfig(BaseModel):
     title: str
     allow_origins_raw: str = Field(validation_alias="allow_origins")
-    ws_stop_message: str
 
     @cached_property
     def allow_origins(self) -> list[str]:
@@ -30,10 +25,20 @@ class LogfireConfig(BaseModel):
     environment: str
 
 
+class BloodGasConfig(BaseModel):
+    unit: str
+    normal_min: float
+    normal_max: float
+
+
+class MedicalConfig(BaseModel):
+    blood_gas: dict[str, BloodGasConfig]
+
+
 class ConfigModel(SettingsModel):
-    app: AppConfig
     server: ServerConfig
     logfire: LogfireConfig
+    medical: MedicalConfig
 
     model_config = SettingsConfig(
         config_merge=True,

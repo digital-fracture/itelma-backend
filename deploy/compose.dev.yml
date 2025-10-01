@@ -2,9 +2,9 @@ services:
   backend:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
     volumes:
-      - ../app:/app/app
-      - ../pyproject.toml:/app/pyproject.toml
-      - ../uv.lock:/app/uv.lock
+      - ../app:/app/app:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../uv.lock:/app/uv.lock:ro
       - ${UV_CACHE_DIR}:${UV_CACHE_DIR}
     working_dir: /app
     command: uv run -m app.cli --reload

@@ -1,78 +1,63 @@
 import asyncio
 import contextlib
 
-import logfire
-from fastapi import (
-    APIRouter,
-    UploadFile,
-    WebSocket,
-    WebSocketDisconnect,
-    WebSocketException,
-    status,
+from fastapi import APIRouter, WebSocket
+
+from app.core.exceptions import EmulationAlreadyStartedError, EmulationNotFoundError
+from app.model import EmulationMessageIn, EmulationQueueIn, EmulationQueueOut
+from app.service.emulation import EmulationService
+
+emulation_router = APIRouter(
+    prefix="/patients/{patient_id}/examinations/{examination_id}/emulation",
+    tags=["emulation"],
 )
 
-from app.api.schema import EmulationUploadResponse
-from app.core import Config
-from app.core.exceptions import SessionNotFoundError, UnknownFileTypeError
-from app.service import EmulationService
 
-from ..util import build_responses
-
-emulation_router = APIRouter(prefix="/emulation", tags=["emulation"])
-
-
-@emulation_router.post(
-    "/upload",
-    status_code=status.HTTP_201_CREATED,
-    responses=build_responses(UnknownFileTypeError),
-    summary="Upload files with data for emulation",
-)
-async def emulation_upload(files: list[UploadFile]) -> EmulationUploadResponse:
-    session_id = await EmulationService.create_session(files)
-
-    return EmulationUploadResponse(session_id=session_id)
-
-
-@emulation_router.websocket("/connect/{session_id}")
-async def emulation_connect(session_id: str, websocket: WebSocket) -> None:
-    await websocket.accept()
-
+@emulation_router.websocket("/start")
+async def emulation_start(websocket: WebSocket, patient_id: int, examination_id: int) -> None:
     try:
-        queue = await EmulationService.subscribe_to_session(session_id)
-    except SessionNotFoundError as exc:
-        raise WebSocketException(code=4001, reason="Session not found") from exc
+        async with EmulationService.new(patient_id, examination_id) as (queue_out, queue_in):
+            await websocket.accept()
 
-    close_task = asyncio.create_task(_close_on_client_request(websocket))
+            send_task = asyncio.create_task(_sender(websocket, queue_out))
+            receiver_task = asyncio.create_task(_receiver(websocket, queue_in))
 
+            done, pending = await asyncio.wait(
+                (send_task, receiver_task), return_when=asyncio.FIRST_COMPLETED
+            )
+
+            for task in pending:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+            for task in done:
+                task.result()  # can raise exceptions - this is intentional
+
+    except EmulationAlreadyStartedError as e:
+        await websocket.close(e.status_code, e.message)
+
+
+@emulation_router.websocket("/attach")
+async def emulation_attach(websocket: WebSocket, patient_id: int, examination_id: int) -> None:
     try:
-        while message := await queue.get():
-            await websocket.send_json(message.model_dump_json())
+        async with EmulationService.attach(patient_id, examination_id) as queue_out:
+            await websocket.accept()
 
-        await websocket.close(code=1000, reason="Emulation finished")
+            await _sender(websocket, queue_out)
 
-    except (WebSocketDisconnect, RuntimeError):
-        logfire.info("WebSocket disconnected", session_id=session_id)
-
-    except Exception:
-        logfire.exception("Internal error in WebSocket", session_id=session_id)
-        await websocket.close(code=1011, reason="Internal error")
-
-    finally:
-        close_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await close_task
-
-        await EmulationService.close_session(session_id)
+    except EmulationNotFoundError as e:
+        await websocket.close(e.status_code, e.message)
 
 
-async def _close_on_client_request(websocket: WebSocket) -> None:
-    try:
-        while True:
-            message = await websocket.receive_text()
+async def _sender(websocket: WebSocket, queue_out: EmulationQueueOut) -> None:
+    async for message in queue_out:
+        if message is None:
+            await websocket.close(code=1000, reason="Emulation finished")
+            return
 
-            if message == Config.server.ws_stop_message:
-                await websocket.close(code=1000, reason="Client requested to close the connection")
-                break
+        await websocket.send_json(message.model_dump_json(exclude_unset=True))
 
-    except (WebSocketDisconnect, RuntimeError):
-        pass
+
+async def _receiver(websocket: WebSocket, queue_in: EmulationQueueIn) -> None:
+    while raw_message := await websocket.receive_json():
+        await queue_in.put_item(EmulationMessageIn.model_validate(raw_message))

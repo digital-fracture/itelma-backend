@@ -1,11 +1,34 @@
-app:
-  allowed_file_types: # TODO: delete
-    text/csv: csv
+medical:
+  blood_gas:
+    pH:
+      unit: ""  # empty string for unitless values
+      normal_min: 7.31
+      normal_max: 7.41
+      default:
+    CO2:
+      unit: mmHg
+      normal_min: 41
+      normal_max: 51
+      default:
+    Glu:
+      unit: mmol/L
+      normal_min: 4.1
+      normal_max: 5.1
+      default:
+    Lac:
+      unit: mmol/L
+      normal_min: 0
+      normal_max: 2
+      default:
+    BE:
+      unit: mmol/L
+      normal_min: -2
+      normal_max: 2
+      default:
 
 server:
   title: ITELMA
   allow_origins: "*"
-  ws_stop_message: stop
 
 logfire:
   service_name: backend

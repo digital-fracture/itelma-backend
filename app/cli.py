@@ -13,7 +13,7 @@ def run(
     *,
     reload: Annotated[bool, Option(help="Enable hot-reload")] = False,
 ) -> None:
-    uvicorn.run("app:app", host=host, port=port, reload=reload)
+    uvicorn.run("app:app", host=host, port=port, reload=reload, workers=1)
 
 
 def main() -> None:

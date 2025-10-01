@@ -2,6 +2,7 @@ __all__ = ["setup_routing"]
 
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import RedirectResponse
+from fastapi_pagination import add_pagination
 
 from .exceptions import register_exception_handlers
 from .middlewares import register_middlewares
@@ -21,3 +22,5 @@ def setup_routing(app: FastAPI) -> None:
     register_exception_handlers(app)
     register_middlewares(app)
     app.include_router(root_router)
+
+    add_pagination(app)

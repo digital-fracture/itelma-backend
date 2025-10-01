@@ -1,4 +1,4 @@
-__all__ = ["Config", "Constants"]
+__all__ = ["Config", "Paths"]
 
 from .config import Config
-from .constants import Constants
+from .paths import Paths

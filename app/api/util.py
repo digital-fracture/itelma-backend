@@ -3,11 +3,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.storage.lifespan import build_storage
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    # await initialize_database()
+    build_storage()
 
     yield
-
-    # await dispose_database()
