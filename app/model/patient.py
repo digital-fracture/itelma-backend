@@ -10,9 +10,9 @@ from .examination import ExaminationBrief
 
 
 class Normal(StrEnum):
-    BELOW = "below"
-    NORMAL = "normal"
-    ABOVE = "above"
+    BELOW = "ниже нормы"
+    NORMAL = "в норме"
+    ABOVE = "выше нормы"
 
 
 class BloodGasItem(BaseModel):
