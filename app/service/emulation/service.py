@@ -6,6 +6,7 @@ import logfire
 
 from app.core.exceptions import EmulationAlreadyStartedError, EmulationNotFoundError
 from app.model import EmulationQueueIn, EmulationQueueOut
+from app.storage import ExaminationStorage
 
 from .session import EmulationSession
 
@@ -22,21 +23,23 @@ class EmulationService:
         if (patient_id, examination_id) in cls._sessions:
             raise EmulationAlreadyStartedError(patient_id, examination_id)
 
+        await ExaminationStorage.check_exists(patient_id, examination_id)
+
         session = EmulationSession(patient_id, examination_id)
         cls._sessions[(patient_id, examination_id)] = session
 
         queue_out = await session.subscribe()
-        await session.start()
+        session.start()
 
         try:
             yield queue_out, session.queue_in
         except Exception:
             logfire.exception(
-                "Exception in main session listener, aborting...",
+                "Exception in main session listener, aborting forcefully...",
                 patient_id=patient_id,
                 examination_id=examination_id,
             )
-            await session.abort()
+            session.force_abort()
         finally:
             del cls._sessions[(patient_id, examination_id)]
 

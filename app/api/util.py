@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import logfire
 from fastapi import FastAPI
 
 from app.storage.lifespan import build_storage
@@ -8,6 +9,7 @@ from app.storage.lifespan import build_storage
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    await build_storage()
+    with logfire.span("App startup"):
+        await build_storage()
 
     yield

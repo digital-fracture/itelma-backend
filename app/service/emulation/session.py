@@ -1,41 +1,29 @@
 import asyncio
-import contextlib
 from pathlib import Path
 from typing import Any
 
 import aiofiles
-from pydantic import BaseModel, Field
+import logfire
 
 from app.core import Paths
 from app.model import (
     Channel,
-    EmulationMessageInCommand,
-    EmulationMessageInitial,
+    EmulationCommand,
+    EmulationMessageClose,
     EmulationMessageOut,
-    EmulationMessageOutStatus,
-    EmulationMessageOutUnion,
+    EmulationMessagePlot,
+    EmulationMessageState,
+    EmulationMessageStatus,
     EmulationPlot,
-    EmulationPrediction,
     EmulationQueueIn,
     EmulationQueueOut,
+    EmulationState,
+    EmulationStatus,
     ExaminationPartData,
 )
 from app.util import AsyncRWLock
 
 from ..examination import ExaminationService
-
-
-class SessionMemory(BaseModel):
-    last_status: EmulationMessageOutStatus = EmulationMessageOutStatus.SENDING
-    current_part_index: int = 1
-    sent_part_data: ExaminationPartData = Field(default_factory=ExaminationPartData)
-    sent_predictions: list[EmulationPrediction] = Field(default_factory=list)
-
-    def rotate(self) -> None:
-        self.last_status = EmulationMessageOutStatus.SENDING
-        self.current_part_index += 1
-        self.sent_part_data = ExaminationPartData()
-        self.sent_predictions = []
 
 
 class EmulationSession:
@@ -51,11 +39,17 @@ class EmulationSession:
             Channel.UTERUS: self._uterus_log_lock,
         }
 
-        self._memory = SessionMemory()
+        self._memory = EmulationState(
+            last_status=EmulationStatus.SENDING,
+            current_part_index=1,
+            sent_part_data=ExaminationPartData(),
+            sent_predictions=[],
+        )
         self._queue_in = EmulationQueueIn()
         self._queues_out: list[EmulationQueueOut] = []
 
-        self._task: asyncio.Future[Any] | None = None
+        self._task: asyncio.Task[Any] | None = None
+        self._shutdown_event = asyncio.Event()
         self._next_part_command_event = asyncio.Event()
 
     @property
@@ -70,26 +64,15 @@ class EmulationSession:
     def queue_in(self) -> EmulationQueueIn:
         return self._queue_in
 
-    async def start(self) -> None:
-        self._task = asyncio.gather(
-            self._consumer(),
-            self._producer(),
-            self._predictor(),
-        )
+    @logfire.instrument("Starting session")
+    def start(self) -> None:
+        self._task = asyncio.create_task(self._run())
 
-    async def abort(self) -> None:
-        async with self._global_lock.write():
-            self._memory.last_status = EmulationMessageOutStatus.ABORTED
-        await self._broadcast()
+    @logfire.instrument("Forcefully aborting session")
+    def force_abort(self) -> None:
+        self._shutdown_event.set()
 
-        await self._dispose()
-
-    async def _dispose(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._task
-
+    @logfire.instrument("Subscribing to session")
     async def subscribe(self) -> EmulationQueueOut:
         """Get new output queue populated with initial message."""
         new_queue = EmulationQueueOut()
@@ -103,49 +86,73 @@ class EmulationSession:
                 self._bpm_log_lock.read(),
                 self._uterus_log_lock.read(),
             ):
-                initial_message = EmulationMessageInitial.model_validate(
-                    self._memory, from_attributes=True
-                )
+                initial_state = self._memory.model_copy()
                 self._queues_out.append(new_queue)
-            await new_queue.put_item(initial_message)
+            await new_queue.put(EmulationMessageState(state=initial_state))
         else:
             async with self._global_lock.write():
                 self._queues_out.append(new_queue)
 
         return new_queue
 
+    @logfire.instrument("Unsubscribing from session")
     async def unsubscribe(self, queue: EmulationQueueOut) -> None:
         """Make given queue no longer receive messages fron this session."""
         async with self._global_lock.write():
             self._queues_out.remove(queue)
 
-    async def _broadcast(self, message: EmulationMessageOutUnion | None = None) -> None:
-        async with self._global_lock.read():
-            if message is None:
-                message = EmulationMessageOut(status=self._memory.last_status)
+    async def _run(self) -> None:
+        tasks = [
+            asyncio.create_task(self._consumer(), name="emulation:consumer"),
+            asyncio.create_task(self._producer(), name="emulation:producer"),
+            asyncio.create_task(self._predictor(), name="emulation:predictor"),
+        ]
 
+        await self._shutdown_event.wait()
+
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for task, result in zip(tasks, results, strict=True):
+            if isinstance(result, BaseException) and not isinstance(result, asyncio.CancelledError):
+                logfire.warn(f"Exception in task '{task.get_name()}'", _exc_info=result)
+
+        await self._broadcast(EmulationMessageClose())
+
+    async def _broadcast(self, message: EmulationMessageOut) -> None:
+        async with self._global_lock.read():
             queues_to_send = self._queues_out.copy()
 
         async with asyncio.TaskGroup() as tg:
             for queue in queues_to_send:
-                tg.create_task(queue.put_item(message))
+                tg.create_task(queue.put(message))
+
+    async def _change_status_and_broadcast(self, new_status: EmulationStatus) -> None:
+        async with self._global_lock.write():
+            self._memory.last_status = new_status
+
+        await self._broadcast(EmulationMessageStatus(status=new_status))
 
     async def _consumer(self) -> None:
-        async for message in self._queue_in:
+        while message := await self._queue_in.get():
             match message.command:
-                case EmulationMessageInCommand.ABORT:
-                    await self.abort()
+                case EmulationCommand.NEXT_PART:
+                    logfire.info("Moving to the next part")
 
-                case EmulationMessageInCommand.NEXT_PART:
                     async with self._global_lock.read():
-                        if (
-                            self._memory.last_status
-                            is not EmulationMessageOutStatus.WAITING_FOR_NEXT_COMMAND
-                        ):
+                        if self._memory.last_status is not EmulationStatus.WAITING_FOR_NEXT_COMMAND:
                             continue
 
-                    async with self._global_lock.write():
-                        self._next_part_command_event.set()
+                    self._next_part_command_event.set()
+
+                case EmulationCommand.ABORT:
+                    logfire.info("Aborting emulation by user request")
+
+                    await self._change_status_and_broadcast(EmulationStatus.ABORTED)
+                    self._shutdown_event.set()
 
     async def _producer(self) -> None:
         patient_id = self._patient_id
@@ -170,20 +177,23 @@ class EmulationSession:
                 ),
             )
 
-            async with self._global_lock.write():
-                self._memory.last_status = EmulationMessageOutStatus.WAITING_FOR_NEXT_COMMAND
-            await self._broadcast()
+            if part_index == examination.metadata.part_count:
+                await self._change_status_and_broadcast(EmulationStatus.FINISHED)
+
+                self._shutdown_event.set()
+                break
+
+            await self._change_status_and_broadcast(EmulationStatus.WAITING_FOR_NEXT_COMMAND)
 
             await self._next_part_command_event.wait()
 
-            self._next_part_command_event.clear()
-
             async with self._global_lock.write():
-                self._memory.rotate()
-            await self._broadcast()
+                self._memory.current_part_index += 1
+                self._memory.sent_part_data = ExaminationPartData()
+                self._memory.sent_predictions = []
+            await self._change_status_and_broadcast(EmulationStatus.SENDING)
 
-        await self._broadcast(None)  # indicate emulation end
-        await self._dispose()
+            self._next_part_command_event.clear()
 
     async def _process_file(self, channel: Channel, path: Path, start_time: float) -> None:
         log = self._memory.sent_part_data.by_channel(channel)
@@ -199,13 +209,18 @@ class EmulationSession:
 
                 elapsed = current_loop.time() - start_time
                 wait_time = timestamp - elapsed
-                await asyncio.sleep(wait_time)
+                if wait_time > 0:
+                    await asyncio.sleep(wait_time)
+
+                # manually check for shutdown, task doesn't want to cancel form outside
+                if self._shutdown_event.is_set():
+                    return
 
                 async with lock.write():
                     log.append(plot_point)
 
                 await self._broadcast(
-                    EmulationMessageOut(
+                    EmulationMessagePlot(
                         plot=EmulationPlot(
                             channel=channel,
                             point=plot_point,

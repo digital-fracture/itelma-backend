@@ -1,4 +1,3 @@
-__all__ = ["AsyncRWLock", "CustomAsyncioPriorityQueue"]
+__all__ = ["AsyncRWLock"]
 
 from .lock import AsyncRWLock
-from .queue import CustomAsyncioPriorityQueue

@@ -1,15 +1,17 @@
+import asyncio
 from enum import StrEnum
-from types import NoneType
-from typing import Self
 
-from pydantic import BaseModel, model_validator
-
-from app.util import CustomAsyncioPriorityQueue
+from pydantic import BaseModel
 
 from .examination import ExaminationPartData
-from .misc import Channel, PlotPoint
+from .misc import Channel, MessageModel, PlotPoint
 
-MultipleMessageTypesError = ValueError("Exactly one message type must be present")
+
+class EmulationStatus(StrEnum):
+    SENDING = "sending"
+    WAITING_FOR_NEXT_COMMAND = "waiting-for-next-command"
+    FINISHED = "finished"
+    ABORTED = "aborted"
 
 
 class EmulationPlot(BaseModel):
@@ -21,51 +23,55 @@ class EmulationPrediction(BaseModel):  # TODO: WIP
     dummy: str = "placeholder"
 
 
-class EmulationMessageOutStatus(StrEnum):
-    SENDING = "sending"
-    WAITING_FOR_NEXT_COMMAND = "waiting-for-next-command"
-    FINISHED = "finished"
-    ABORTED = "aborted"
-
-
-class EmulationMessageInitial(BaseModel):
-    last_status: EmulationMessageOutStatus
+class EmulationState(BaseModel):
+    last_status: EmulationStatus
     current_part_index: int
     sent_part_data: ExaminationPartData
     sent_predictions: list[EmulationPrediction]
 
 
-class EmulationMessageOut(BaseModel):
-    status: EmulationMessageOutStatus | None = None
-    plot: EmulationPlot | None = None
-    prediction: EmulationPrediction | None = None
-
-    @model_validator(mode="after")
-    def ensure_one_field(self) -> Self:
-        if len(self.model_fields_set) == 1:
-            return self
-
-        raise MultipleMessageTypesError
+class EmulationMessageState(MessageModel):
+    message_priority = 0
+    state: EmulationState
 
 
-class EmulationMessageInCommand(StrEnum):
-    ABORT = "abort"  # abort the emulation
-    NEXT_PART = "next-part"  # move to the next part
+class EmulationMessageStatus(MessageModel):
+    message_priority = 1
+    status: EmulationStatus
 
 
-class EmulationMessageIn(BaseModel):
-    command: EmulationMessageInCommand
+class EmulationMessageClose(MessageModel):  # signals the end of emulation
+    message_priority = 2
 
 
-EmulationMessageOutUnion = EmulationMessageInitial | EmulationMessageOut | None
+class EmulationMessagePrediction(MessageModel):
+    message_priority = 3
+    prediction: EmulationPrediction
 
 
-class EmulationQueueOut(CustomAsyncioPriorityQueue[EmulationMessageOutUnion]):
-    type_priority_order = (
-        EmulationMessageInitial,
-        (EmulationMessageIn, NoneType),
-    )
+class EmulationMessagePlot(MessageModel):
+    message_priority = 4
+    plot: EmulationPlot
 
 
-class EmulationQueueIn(CustomAsyncioPriorityQueue[EmulationMessageIn]):
-    pass
+class EmulationCommand(StrEnum):
+    ABORT = "abort"
+    NEXT_PART = "next-part"
+
+
+class EmulationMessageCommand(MessageModel):
+    command: EmulationCommand
+
+
+EmulationMessageOut = (
+    EmulationMessageState
+    | EmulationMessageStatus
+    | EmulationMessageClose
+    | EmulationMessagePrediction
+    | EmulationMessagePlot
+)
+EmulationMessageIn = EmulationMessageCommand
+
+
+EmulationQueueOut = asyncio.PriorityQueue[EmulationMessageOut]
+EmulationQueueIn = asyncio.PriorityQueue[EmulationMessageIn]

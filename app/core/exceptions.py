@@ -5,6 +5,7 @@ from fastapi import UploadFile, status
 
 class AppBaseError(Exception):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    ws_status_code = 4000
     message = "Unknown error"
     headers: ClassVar[dict[str, str] | None] = None
 
@@ -22,6 +23,7 @@ class UnknownFileTypeError(AppBaseError):
 
 class PatientNotFoundError(AppBaseError):
     status_code = status.HTTP_404_NOT_FOUND
+    ws_status_code = 4001
     message = "Patient not found"
 
     def __init__(self, patient_id: int) -> None:
@@ -30,6 +32,7 @@ class PatientNotFoundError(AppBaseError):
 
 class ExaminationNotFoundError(AppBaseError):
     status_code = status.HTTP_404_NOT_FOUND
+    ws_status_code = 4002
     message = "Examination not found"
 
     def __init__(self, patient_id: int, examination_id: int) -> None:
@@ -38,6 +41,7 @@ class ExaminationNotFoundError(AppBaseError):
 
 class ExaminationPartNotFoundError(AppBaseError):
     status_code = status.HTTP_404_NOT_FOUND
+    ws_status_code = 4003
     message = "Examination part not found"
 
     def __init__(self, patient_id: int, examination_id: int, part_index: int) -> None:
@@ -51,7 +55,7 @@ class ExaminationPartNotFoundError(AppBaseError):
 
 
 class EmulationAlreadyStartedError(AppBaseError):
-    status_code = 4001
+    ws_status_code = 4100
     message = "Emulation of this examination already started"
 
     def __init__(self, patient_id: int, examination_id: int) -> None:
@@ -59,7 +63,7 @@ class EmulationAlreadyStartedError(AppBaseError):
 
 
 class EmulationNotFoundError(AppBaseError):
-    status_code = 4002
+    ws_status_code = 4101
     message = "Emulation of this examination not found"
 
     def __init__(self, patient_id: int, examination_id: int) -> None:
