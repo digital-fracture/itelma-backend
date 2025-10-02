@@ -40,8 +40,8 @@ class EmulationSession:
         }
 
         self._memory = EmulationState(
-            last_status=EmulationStatus.SENDING,
-            current_part_index=1,
+            status=EmulationStatus.SENDING,
+            part_index=1,
             sent_part_data=ExaminationPartData(),
             sent_predictions=[],
         )
@@ -132,7 +132,7 @@ class EmulationSession:
 
     async def _change_status_and_broadcast(self, new_status: EmulationStatus) -> None:
         async with self._global_lock.write():
-            self._memory.last_status = new_status
+            self._memory.status = new_status
 
         await self._broadcast(EmulationMessageStatus(status=new_status))
 
@@ -143,7 +143,7 @@ class EmulationSession:
                     logfire.info("Moving to the next part")
 
                     async with self._global_lock.read():
-                        if self._memory.last_status is not EmulationStatus.WAITING_FOR_NEXT_COMMAND:
+                        if self._memory.status is not EmulationStatus.WAITING_FOR_NEXT_COMMAND:
                             continue
 
                     self._next_part_command_event.set()
@@ -188,7 +188,7 @@ class EmulationSession:
             await self._next_part_command_event.wait()
 
             async with self._global_lock.write():
-                self._memory.current_part_index += 1
+                self._memory.part_index += 1
                 self._memory.sent_part_data = ExaminationPartData()
                 self._memory.sent_predictions = []
             await self._change_status_and_broadcast(EmulationStatus.SENDING)

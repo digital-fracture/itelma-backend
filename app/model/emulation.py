@@ -24,8 +24,8 @@ class EmulationPrediction(BaseModel):  # TODO: WIP
 
 
 class EmulationState(BaseModel):
-    last_status: EmulationStatus
-    current_part_index: int
+    status: EmulationStatus
+    part_index: int
     sent_part_data: ExaminationPartData
     sent_predictions: list[EmulationPrediction]
 
