@@ -5,7 +5,7 @@ from typing import ClassVar
 import logfire
 
 from app.core.exceptions import EmulationAlreadyStartedError, EmulationNotFoundError
-from app.model import EmulationQueueIn, EmulationQueueOut
+from app.model import EmulationQueueIn, EmulationQueueOut, PatientBrief
 from app.storage import ExaminationStorage
 
 from .session import EmulationSession
@@ -58,6 +58,13 @@ class EmulationService:
             yield queue
         finally:
             await session.unsubscribe(queue)
+
+    @classmethod
+    def fill_ongoing_examination(cls, patients: list[PatientBrief]) -> None:
+        patient_to_ongoing_examination = dict(cls._sessions.keys())
+
+        for patient in patients:
+            patient.ongoing_examination_id = patient_to_ongoing_examination.get(patient.id)
 
     @classmethod
     async def _assert_exists(cls, patient_id: int, examination_id: int) -> None:

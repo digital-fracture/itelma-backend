@@ -60,11 +60,13 @@ class PatientPredictions(BaseModel):  # TODO: WIP
 class PatientBrief(BaseModel):
     id: int
     name: str = ""
+    ongoing_examination_id: int | None = None
 
 
 class Patient(PatientBrief):
     info: PatientInfo = Field(default_factory=PatientInfo)
     predictions: PatientPredictions = Field(default_factory=PatientPredictions)
+
     examinations: list[ExaminationBrief] = Field(default_factory=list)
 
 
