@@ -41,4 +41,8 @@ class ExaminationPart(BaseModel):
     data: ExaminationPartData
 
     stats: ExaminationPartStats = Field(default_factory=ExaminationPartStats)
-    intervals: list[ExaminationPartInterval] = Field(default_factory=list)
+    # intervals: list[ExaminationPartInterval] = Field(default_factory=list)
+    intervals: list[ExaminationPartInterval] = [
+        ExaminationPartInterval(start=20, end=25, message="Example 1"),
+        ExaminationPartInterval(start=40, end=50, message="Example 2"),
+    ]

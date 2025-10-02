@@ -1,5 +1,6 @@
 ### Custom
 /storage/
+/resources/ml/
 
 # Makefile auxiliary target files
 /.setup.stamp

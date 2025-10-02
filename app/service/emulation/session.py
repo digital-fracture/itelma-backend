@@ -1,4 +1,5 @@
 import asyncio
+import random
 from pathlib import Path
 from typing import Any
 
@@ -12,17 +13,22 @@ from app.model import (
     EmulationMessageClose,
     EmulationMessageOut,
     EmulationMessagePlot,
+    EmulationMessagePrediction,
     EmulationMessageState,
     EmulationMessageStatus,
     EmulationPlot,
+    EmulationPrediction,
     EmulationQueueIn,
     EmulationQueueOut,
     EmulationState,
     EmulationStatus,
     ExaminationPartData,
+    ExaminationPartInterval,
+    ExaminationPartStats,
 )
 from app.util import AsyncRWLock
 
+from ...model.emulation import EmulationMessageInterval, EmulationMessageStats
 from ..examination import ExaminationService
 
 
@@ -108,6 +114,8 @@ class EmulationSession:
             asyncio.create_task(self._consumer(), name="emulation:consumer"),
             asyncio.create_task(self._producer(), name="emulation:producer"),
             asyncio.create_task(self._predictor(), name="emulation:predictor"),
+            asyncio.create_task(self._statser(), name="emulation:statser"),
+            asyncio.create_task(self._intervaler(), name="emulation:intervaler"),
         ]
 
         await self._shutdown_event.wait()
@@ -233,4 +241,67 @@ class EmulationSession:
                 )
 
     async def _predictor(self) -> None:
-        pass  # TODO: WIP
+        await asyncio.sleep(60)
+
+        while True:
+            await self._wait_for_sending_status()
+
+            new_prediction = EmulationPrediction(
+                bpm_average=random.randint(100, 120),  # noqa: S311
+                bpm_min=random.randint(80, 100),  # noqa: S311
+                messages=["Рост вероятности гипоксии (горизонт 15 мин) - 70%"],
+            )
+
+            await self._broadcast(EmulationMessagePrediction(prediction=new_prediction))
+            async with self._global_lock.write():
+                self._memory.sent_predictions.append(new_prediction)
+
+            await asyncio.sleep(10)
+
+    async def _intervaler(self) -> None:
+        await asyncio.sleep(20)
+
+        while True:
+            await self._wait_for_sending_status()
+
+            async with self._global_lock.read():
+                last_sent_time = (
+                    self._memory.sent_part_data.bpm[-1][0]
+                    if self._memory.sent_part_data.bpm
+                    else 0.0
+                )
+
+            new_interval = ExaminationPartInterval(
+                start=last_sent_time - 15,
+                end=last_sent_time - 5,
+                message="Пример интервала",
+            )
+
+            await self._broadcast(EmulationMessageInterval(interval=new_interval))
+            async with self._global_lock.write():
+                self._memory.sent_intervals.append(new_interval)
+
+            await asyncio.sleep(random.randint(15, 30))  # noqa: S311
+
+    async def _statser(self) -> None:
+        await asyncio.sleep(3)
+
+        while True:
+            await self._wait_for_sending_status()
+
+            new_stats = ExaminationPartStats()
+
+            await self._broadcast(EmulationMessageStats(stats=new_stats))
+            async with self._global_lock.write():
+                self._memory.last_stats = new_stats
+
+            await asyncio.sleep(10)
+
+    async def _wait_for_sending_status(self) -> None:
+        async with self._global_lock.read():
+            current_status = self._memory.status
+
+        while current_status != EmulationStatus.SENDING:
+            await asyncio.sleep(5)
+            async with self._global_lock.read():
+                current_status = self._memory.status
