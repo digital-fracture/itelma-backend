@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel
 
+from .analysis import EmulationPrediction, ExaminationPartInterval, ExaminationPartStats
 from .examination import ExaminationPartData
 from .misc import Channel, MessageModel, PlotPoint
 
@@ -19,15 +20,14 @@ class EmulationPlot(BaseModel):
     point: PlotPoint
 
 
-class EmulationPrediction(BaseModel):  # TODO: WIP
-    dummy: str = "placeholder"
-
-
 class EmulationState(BaseModel):
     status: EmulationStatus
     part_index: int
     sent_part_data: ExaminationPartData
+
     sent_predictions: list[EmulationPrediction]
+    sent_intervals: list[ExaminationPartInterval]
+    last_stats: ExaminationPartStats | None = None
 
 
 class EmulationMessageState(MessageModel):
@@ -44,9 +44,19 @@ class EmulationMessageClose(MessageModel):  # signals the end of emulation
     message_priority = 2
 
 
+class EmulationMessageInterval(MessageModel):
+    message_priority = 3
+    interval: ExaminationPartInterval
+
+
 class EmulationMessagePrediction(MessageModel):
     message_priority = 3
     prediction: EmulationPrediction
+
+
+class EmulationMessageStats(MessageModel):
+    message_priority = 3
+    stats: ExaminationPartStats
 
 
 class EmulationMessagePlot(MessageModel):
@@ -67,7 +77,9 @@ EmulationMessageOut = (
     EmulationMessageState
     | EmulationMessageStatus
     | EmulationMessageClose
+    | EmulationMessageInterval
     | EmulationMessagePrediction
+    | EmulationMessageStats
     | EmulationMessagePlot
 )
 EmulationMessageIn = EmulationMessageCommand

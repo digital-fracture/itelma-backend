@@ -2,6 +2,7 @@ import datetime
 
 from pydantic import BaseModel, Field
 
+from .analysis import ExaminationPartInterval, ExaminationPartStats
 from .misc import Channel, PlotPoint
 
 
@@ -10,8 +11,8 @@ class ExaminationMetadata(BaseModel):
     part_count: int
 
 
-class ExaminationPredictions(BaseModel):  # TODO: WIP
-    dummy: str = "placeholder"
+class ExaminationPredictions(BaseModel):
+    pass
 
 
 class ExaminationBrief(BaseModel):
@@ -38,3 +39,6 @@ class ExaminationPartData(BaseModel):
 class ExaminationPart(BaseModel):
     index: int
     data: ExaminationPartData
+
+    stats: ExaminationPartStats = Field(default_factory=ExaminationPartStats)
+    intervals: list[ExaminationPartInterval] = Field(default_factory=list)

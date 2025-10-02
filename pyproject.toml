@@ -38,6 +38,10 @@ strict = true
 
 plugins = "pydantic.mypy"
 
+[[tool.mypy.overrides]]
+module = "app.analysis.*"
+ignore_errors = true
+
 
 [tool.ruff]
 target-version = "py313"

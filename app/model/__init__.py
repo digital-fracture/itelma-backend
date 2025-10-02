@@ -20,6 +20,8 @@ __all__ = [
     "ExaminationMetadata",
     "ExaminationPart",
     "ExaminationPartData",
+    "ExaminationPartInterval",
+    "ExaminationPartStats",
     "ExaminationPredictions",
     "Patient",
     "PatientBrief",
@@ -29,7 +31,7 @@ __all__ = [
     "PatientUpdate",
     "PlotPoint",
 ]
-
+from .analysis import EmulationPrediction, ExaminationPartInterval, ExaminationPartStats
 from .emulation import (
     EmulationCommand,
     EmulationMessageClose,
@@ -41,7 +43,6 @@ from .emulation import (
     EmulationMessageState,
     EmulationMessageStatus,
     EmulationPlot,
-    EmulationPrediction,
     EmulationQueueIn,
     EmulationQueueOut,
     EmulationState,

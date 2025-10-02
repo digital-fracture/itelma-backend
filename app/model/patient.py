@@ -53,8 +53,8 @@ class PatientInfo(BaseModel):
     blood_gas: list[BloodGasItem] = Field(default_factory=list)
 
 
-class PatientPredictions(BaseModel):  # TODO: WIP
-    dummy: str = "placeholder"
+class PatientPredictions(BaseModel):
+    pass
 
 
 class PatientBrief(BaseModel):
@@ -71,8 +71,8 @@ class Patient(PatientBrief):
 
 
 class PatientCreate(BaseModel):
-    name: str
-    info: PatientInfo
+    name: str = ""
+    info: PatientInfo = Field(default_factory=PatientInfo)
 
 
 class PatientUpdate(BaseModel):

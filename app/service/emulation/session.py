@@ -44,6 +44,8 @@ class EmulationSession:
             part_index=1,
             sent_part_data=ExaminationPartData(),
             sent_predictions=[],
+            sent_intervals=[],
+            last_stats=None,
         )
         self._queue_in = EmulationQueueIn()
         self._queues_out: list[EmulationQueueOut] = []
@@ -191,6 +193,8 @@ class EmulationSession:
                 self._memory.part_index += 1
                 self._memory.sent_part_data = ExaminationPartData()
                 self._memory.sent_predictions = []
+                self._memory.sent_intervals = []
+                self._memory.last_stats = None
             await self._change_status_and_broadcast(EmulationStatus.SENDING)
 
             self._next_part_command_event.clear()
