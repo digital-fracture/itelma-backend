@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import random
 from pathlib import Path
 from typing import Any
@@ -6,30 +7,32 @@ from typing import Any
 import aiofiles
 import logfire
 
+from app import analysis
 from app.core import Paths
 from app.model import (
     Channel,
     EmulationCommand,
     EmulationMessageClose,
+    EmulationMessageInterval,
     EmulationMessageOut,
     EmulationMessagePlot,
     EmulationMessagePrediction,
     EmulationMessageState,
+    EmulationMessageStats,
     EmulationMessageStatus,
     EmulationPlot,
-    EmulationPrediction,
     EmulationQueueIn,
     EmulationQueueOut,
     EmulationState,
     EmulationStatus,
-    ExaminationPartData,
     ExaminationPartInterval,
     ExaminationPartStats,
 )
 from app.util import AsyncRWLock
 
-from ...model.emulation import EmulationMessageInterval, EmulationMessageStats
 from ..examination import ExaminationService
+
+INFERENCE_INTERVAL_SECONDS = 10
 
 
 class EmulationSession:
@@ -45,14 +48,7 @@ class EmulationSession:
             Channel.UTERUS: self._uterus_log_lock,
         }
 
-        self._memory = EmulationState(
-            status=EmulationStatus.SENDING,
-            part_index=1,
-            sent_part_data=ExaminationPartData(),
-            sent_predictions=[],
-            sent_intervals=[],
-            last_stats=None,
-        )
+        self._memory = EmulationState(status=EmulationStatus.SENDING, part_index=1)
         self._queue_in = EmulationQueueIn()
         self._queues_out: list[EmulationQueueOut] = []
 
@@ -170,8 +166,12 @@ class EmulationSession:
         examination = await ExaminationService.get_by_id(patient_id, examination_id)
 
         for part_index in range(1, examination.metadata.part_count + 1):
-            bpm_path = Paths.examination_part_bpm_file(patient_id, examination_id, part_index)
-            uterus_path = Paths.examination_part_uterus_file(patient_id, examination_id, part_index)
+            bpm_path = Paths.storage.examination_part_bpm_file(
+                patient_id, examination_id, part_index
+            )
+            uterus_path = Paths.storage.examination_part_uterus_file(
+                patient_id, examination_id, part_index
+            )
 
             start_time = asyncio.get_running_loop().time()
             await asyncio.gather(
@@ -198,11 +198,7 @@ class EmulationSession:
             await self._next_part_command_event.wait()
 
             async with self._global_lock.write():
-                self._memory.part_index += 1
-                self._memory.sent_part_data = ExaminationPartData()
-                self._memory.sent_predictions = []
-                self._memory.sent_intervals = []
-                self._memory.last_stats = None
+                self._memory.rotate()
             await self._change_status_and_broadcast(EmulationStatus.SENDING)
 
             self._next_part_command_event.clear()
@@ -241,22 +237,17 @@ class EmulationSession:
                 )
 
     async def _predictor(self) -> None:
-        await asyncio.sleep(60)
-
         while True:
             await self._wait_for_sending_status()
 
-            new_prediction = EmulationPrediction(
-                bpm_average=random.randint(100, 120),  # noqa: S311
-                bpm_min=random.randint(80, 100),  # noqa: S311
-                messages=["Рост вероятности гипоксии (горизонт 15 мин) - 70%"],
-            )
+            with contextlib.suppress(ValueError):
+                new_prediction = await analysis.predict(self._memory)
 
-            await self._broadcast(EmulationMessagePrediction(prediction=new_prediction))
-            async with self._global_lock.write():
-                self._memory.sent_predictions.append(new_prediction)
+                await self._broadcast(EmulationMessagePrediction(prediction=new_prediction))
+                async with self._global_lock.write():
+                    self._memory.sent_predictions.append(new_prediction)
 
-            await asyncio.sleep(10)
+            await asyncio.sleep(INFERENCE_INTERVAL_SECONDS)
 
     async def _intervaler(self) -> None:
         await asyncio.sleep(20)

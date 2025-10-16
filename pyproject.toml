@@ -7,15 +7,18 @@ authors = [
 
 requires-python = ">=3.13"
 dependencies = [
-    "aiofiles>=24.1.0",
+    "aiofiles>=25.1.0",
     "aiozipstream>=0.4",
-    "fastapi-pagination>=0.14.2",
-    "fastapi[standard-no-fastapi-cloud-cli]>=0.118.0",
-    "logfire[fastapi]>=4.10.0",
+    "fastapi-pagination>=0.14.3",
+    "fastapi[standard-no-fastapi-cloud-cli]>=0.119.0",
+    "logfire[fastapi]>=4.13.2",
+    "numpy>=2.3.4",
     "orjson>=3.11.3",
-    "pydantic>=2.11.9",
+    "pandas>=2.3.3",
+    "pydantic>=2.12.2",
     "pydantic-config[yaml]>=0.3.1",
     "pyyaml>=6.0.3",
+    "torch>=2.9.0",
     "typer>=0.19.2",
 ]
 
@@ -27,9 +30,17 @@ dev = [
     "types-pyyaml>=6.0.12.20250915",
 ]
 
+[tool.uv.sources]
+torch = { index = "pytorch" }
+
 [[tool.uv.index]]
 name = "pydantic-config-fork"
 url = "https://gitlab.com/api/v4/projects/74676214/packages/pypi/simple"
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 
 [tool.mypy]
@@ -47,59 +58,61 @@ ignore_errors = true
 target-version = "py313"
 line-length = 100
 
+extend-exclude = ["app/analysis/**"]
+
 [tool.ruff.lint]
 select = [
-    "A",     # flake8-builtins (builtin name shadowing)
-    "ANN",   # flake8-annotations
-    "ARG",   # flake8-unused-arguments
+    "A", # flake8-builtins (builtin name shadowing)
+    "ANN", # flake8-annotations
+    "ARG", # flake8-unused-arguments
     "ASYNC", # flake8-async
-    "B",     # flake8-bugbear (common bug causes)
-    "C4",    # flake8-comprehensions
-    "COM",   # flake8-commas
-    "D",     # pydocstyle
-    "DTZ",   # flake8-datetimez
-    "E",     # pycodestyle
-    "EXE",   # flake8-executable
-    "F",     # pyflakes
-    "FA",    # flake8-future-annotations
-    "FAST",  # FastAPI
-    "FBT",   # flake8-boolean-trap (disallow boolean positional arguments)
-    "FLY",   # pyflint
-    "FURB",  # refurb (use new language features)
-    "G",     # flake8-logging-format
-    "I",     # isort (imports)
-    "ICN",   # flake8-import-conventions
-    "ISC",   # flake8-implicit-str-concat
-    "LOG",   # flake8-logging
-    "N",     # pep8-naming
-    "PERF",  # perflint
-    "PIE",   # flake8-pie
-    "PL",    # pylint
-    "PT",    # flake8-pytest-style
-    "PTH",   # flake8-use-pathlib
-    "Q",     # flake8-quotes
-    "RET",   # flake8-return
-    "RSE",   # flake8-raise
-    "RUF",   # ruff-specific
-    "S",     # flake8-bandit (security)
-    "SIM",   # flake8-simpify
-    "SLF",   # flake8-self
-    "SLOT",  # flake8-slots
-    "T100",  # flake8-debugger
-    "TRY",   # tryceratops
-    "UP",    # pyupgrade (disallow deprecated language features)
-    "W",     # pycodestyle
-    "YTT",   # flake8-2020
+    "B", # flake8-bugbear (common bug causes)
+    "C4", # flake8-comprehensions
+    "COM", # flake8-commas
+    "D", # pydocstyle
+    "DTZ", # flake8-datetimez
+    "E", # pycodestyle
+    "EXE", # flake8-executable
+    "F", # pyflakes
+    "FA", # flake8-future-annotations
+    "FAST", # FastAPI
+    "FBT", # flake8-boolean-trap (disallow boolean positional arguments)
+    "FLY", # pyflint
+    "FURB", # refurb (use new language features)
+    "G", # flake8-logging-format
+    "I", # isort (imports)
+    "ICN", # flake8-import-conventions
+    "ISC", # flake8-implicit-str-concat
+    "LOG", # flake8-logging
+    "N", # pep8-naming
+    "PERF", # perflint
+    "PIE", # flake8-pie
+    "PL", # pylint
+    "PT", # flake8-pytest-style
+    "PTH", # flake8-use-pathlib
+    "Q", # flake8-quotes
+    "RET", # flake8-return
+    "RSE", # flake8-raise
+    "RUF", # ruff-specific
+    "S", # flake8-bandit (security)
+    "SIM", # flake8-simpify
+    "SLF", # flake8-self
+    "SLOT", # flake8-slots
+    "T100", # flake8-debugger
+    "TRY", # tryceratops
+    "UP", # pyupgrade (disallow deprecated language features)
+    "W", # pycodestyle
+    "YTT", # flake8-2020
 ]
 ignore = [
     "COM812", # redundant because of ruff format
-    "D1",     # allow undocumented entities
-    "D212",   # prefer D213 instead (google doc style override)
-    "D405",   # section names don't have to be capitalized
-    "PLR09",  # disable complexity warnings
+    "D1", # allow undocumented entities
+    "D212", # prefer D213 instead (google doc style override)
+    "D405", # section names don't have to be capitalized
+    "PLR09", # disable complexity warnings
 ]
 extend-select = [
-    "D213",  # multi-line docstring summary should start at the second line
+    "D213", # multi-line docstring summary should start at the second line
 ]
 fixable = ["ALL"]
 

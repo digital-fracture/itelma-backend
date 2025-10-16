@@ -32,7 +32,7 @@ class ExaminationStorage:
 
         async with LockManager.read(Lock.patient_examination_list(patient_id)):
             if str(examination_id) not in (
-                await aiofiles.os.listdir(Paths.all_examinations_dir(patient_id))
+                await aiofiles.os.listdir(Paths.storage.all_examinations_dir(patient_id))
             ):
                 if throw:
                     raise ExaminationNotFoundError(patient_id, examination_id)
@@ -46,33 +46,44 @@ class ExaminationStorage:
         async with LockManager.write(Lock.patient_examination_list(patient_id)):
             examination_id = (
                 max(
-                    map(int, await aiofiles.os.listdir(Paths.all_examinations_dir(patient_id))),
+                    map(
+                        int,
+                        await aiofiles.os.listdir(Paths.storage.all_examinations_dir(patient_id)),
+                    ),
                     default=0,
                 )
                 + 1
             )
 
         zip_path = await util.save_temp_file(examination_upload_file)
-        examination_dir = Paths.examination_dir(patient_id, examination_id)
+        examination_dir = Paths.storage.examination_dir(patient_id, examination_id)
 
         async with LockManager.write(Lock.patient_examination(patient_id, examination_id)):
             await util.unzip(zip_path, examination_dir)
             await asyncio.gather(
-                util.rename_to_numbers(Paths.examination_bpm_dir(patient_id, examination_id)),
-                util.rename_to_numbers(Paths.examination_uterus_dir(patient_id, examination_id)),
+                util.rename_to_numbers(
+                    Paths.storage.examination_bpm_dir(patient_id, examination_id)
+                ),
+                util.rename_to_numbers(
+                    Paths.storage.examination_uterus_dir(patient_id, examination_id)
+                ),
             )
 
             metadata = ExaminationMetadata(
                 date=datetime.datetime.now(tz=datetime.UTC).astimezone().date(),
                 part_count=len(
-                    await aiofiles.os.listdir(Paths.examination_bpm_dir(patient_id, examination_id))
+                    await aiofiles.os.listdir(
+                        Paths.storage.examination_bpm_dir(patient_id, examination_id)
+                    )
                 ),
             )
             await util.dump_yaml(
                 metadata.model_dump(exclude_unset=True),
-                Paths.examination_metadata_file(patient_id, examination_id),
+                Paths.storage.examination_metadata_file(patient_id, examination_id),
             )
-            await util.create_empty(Paths.examination_predictions_file(patient_id, examination_id))
+            await util.create_empty(
+                Paths.storage.examination_predictions_file(patient_id, examination_id)
+            )
 
         return Examination(id=examination_id, metadata=metadata)
 
@@ -82,7 +93,7 @@ class ExaminationStorage:
         await PatientStorage.check_exists(patient_id)
 
         async with LockManager.read(Lock.patient_examination_list(patient_id)):
-            examinations_dir = Paths.all_examinations_dir(patient_id)
+            examinations_dir = Paths.storage.all_examinations_dir(patient_id)
 
             return await asyncio.gather(
                 *(
@@ -95,7 +106,7 @@ class ExaminationStorage:
     @staticmethod
     async def _get_brief(examination_dir: Path) -> ExaminationBrief:
         examination_id = int(examination_dir.name)
-        metadata_path = examination_dir / Paths.metadata_file_name
+        metadata_path = examination_dir / Paths.storage.metadata_file_name
 
         raw_metadata = await util.load_yaml(metadata_path)
         return ExaminationBrief(
@@ -109,10 +120,10 @@ class ExaminationStorage:
 
         async with LockManager.read(Lock.patient_examination(patient_id, examination_id)):
             raw_metadata = await util.load_yaml(
-                Paths.examination_metadata_file(patient_id, examination_id)
+                Paths.storage.examination_metadata_file(patient_id, examination_id)
             )
             raw_predictions = await util.load_yaml(
-                Paths.examination_predictions_file(patient_id, examination_id)
+                Paths.storage.examination_predictions_file(patient_id, examination_id)
             )
 
         return Examination(
@@ -128,8 +139,10 @@ class ExaminationStorage:
     ) -> ExaminationPartData:
         await cls.check_exists(patient_id, examination_id)
 
-        bpm_path = Paths.examination_part_bpm_file(patient_id, examination_id, part_index)
-        uterus_path = Paths.examination_part_uterus_file(patient_id, examination_id, part_index)
+        bpm_path = Paths.storage.examination_part_bpm_file(patient_id, examination_id, part_index)
+        uterus_path = Paths.storage.examination_part_uterus_file(
+            patient_id, examination_id, part_index
+        )
 
         if not all(
             await asyncio.gather(

@@ -2,10 +2,16 @@ import tempfile
 from functools import lru_cache
 from pathlib import Path
 
+from .config import RESOURCE_DIR
 
-class Paths:
-    temp_dir = Path(tempfile.gettempdir()) / "itelma"
 
+class MLPaths:
+    root_dir = RESOURCE_DIR / "ml"
+
+    predictor_model = root_dir / "predictor.pt"
+
+
+class StoragePaths:
     root_dir = Path("storage")
 
     all_patients_dir = root_dir / "patients"
@@ -77,3 +83,10 @@ class Paths:
         cls, patient_id: int, examination_id: int, part_index: int
     ) -> Path:
         return cls.examination_uterus_dir(patient_id, examination_id) / f"{part_index}.csv"
+
+
+class Paths:
+    temp_dir = Path(tempfile.gettempdir()) / "itelma"
+
+    ml = MLPaths
+    storage = StoragePaths

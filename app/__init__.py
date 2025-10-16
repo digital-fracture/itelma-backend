@@ -11,6 +11,7 @@ logfire.configure(
     environment=Config.logfire.environment,
     send_to_logfire="if-token-present",
     distributed_tracing=False,
+    console=logfire.ConsoleOptions(min_log_level="debug"),
 )
 
 logfire.instrument_pydantic()

@@ -26,7 +26,7 @@ class PatientStorage:
     @logfire.instrument
     async def initialize(cls) -> None:
         async with LockManager.read(Lock.patient_list):
-            cls._id_to_name = await util.load_yaml(Paths.patient_names_file)
+            cls._id_to_name = await util.load_yaml(Paths.storage.patient_names_file)
 
     @classmethod
     @logfire.instrument(record_return=True)
@@ -48,17 +48,17 @@ class PatientStorage:
 
         async with LockManager.write(Lock.patient_list):
             cls._id_to_name[patient_id] = patient.name
-            await util.dump_yaml(cls._id_to_name, Paths.patient_names_file)
+            await util.dump_yaml(cls._id_to_name, Paths.storage.patient_names_file)
 
         async with LockManager.write(Lock.patient(patient_id)):
-            await aiofiles.os.makedirs(Paths.patient_dir(patient_id))
-            await aiofiles.os.makedirs(Paths.all_examinations_dir(patient_id))
+            await aiofiles.os.makedirs(Paths.storage.patient_dir(patient_id))
+            await aiofiles.os.makedirs(Paths.storage.all_examinations_dir(patient_id))
 
             await util.dump_yaml(
                 patient.info.model_dump(exclude_unset=True),
-                Paths.patient_info_file(patient_id),
+                Paths.storage.patient_info_file(patient_id),
             )
-            await util.create_empty(Paths.patient_predictions_file(patient_id))
+            await util.create_empty(Paths.storage.patient_predictions_file(patient_id))
 
         return Patient(id=patient_id, name=patient.name, info=patient.info)
 
@@ -77,8 +77,10 @@ class PatientStorage:
             name = cls._id_to_name[patient_id]
 
         async with LockManager.read(Lock.patient(patient_id)):
-            raw_info = await util.load_yaml(Paths.patient_info_file(patient_id))
-            raw_predictions = await util.load_yaml(Paths.patient_predictions_file(patient_id))
+            raw_info = await util.load_yaml(Paths.storage.patient_info_file(patient_id))
+            raw_predictions = await util.load_yaml(
+                Paths.storage.patient_predictions_file(patient_id)
+            )
 
         return Patient(
             id=patient_id,
@@ -95,11 +97,11 @@ class PatientStorage:
         if patient_update.name is not None:
             async with LockManager.write(Lock.patient_list):
                 cls._id_to_name[patient_id] = patient_update.name
-                await util.dump_yaml(cls._id_to_name, Paths.patient_names_file)
+                await util.dump_yaml(cls._id_to_name, Paths.storage.patient_names_file)
 
         if patient_update.info is not None:
             async with LockManager.write(Lock.patient(patient_id)):
-                info_path = Paths.patient_info_file(patient_id)
+                info_path = Paths.storage.patient_info_file(patient_id)
 
                 old_info = PatientInfo.model_validate(await util.load_yaml(info_path))
                 updated_info = old_info.model_copy(

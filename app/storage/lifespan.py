@@ -4,9 +4,7 @@ from .patient import PatientStorage
 
 
 async def build_storage() -> None:
-    Paths.temp_dir.mkdir(parents=True, exist_ok=True)
-
-    Paths.all_patients_dir.mkdir(parents=True, exist_ok=True)
-    Paths.patient_names_file.touch()
+    Paths.storage.all_patients_dir.mkdir(parents=True, exist_ok=True)
+    Paths.storage.patient_names_file.touch()
 
     await PatientStorage.initialize()
