@@ -81,13 +81,15 @@ class PatientStorage:
             if patient_db is None:
                 raise PatientNotFoundError(patient_id)
 
+            metadata = PatientMetadata(**patient_db.model_dump())
+
         async with LockManager.read(Lock.patient(patient_id)):
             raw_info = await util.load_yaml(Paths.storage.patient_info_file(patient_id))
             comment = await util.read_text(Paths.storage.patient_comment_file(patient_id))
 
         return Patient(
             id=patient_id,
-            metadata=PatientMetadata.model_validate(patient_db),
+            metadata=metadata,
             info=PatientInfo.model_validate(raw_info),
             comment=comment,
         )
@@ -107,7 +109,7 @@ class PatientStorage:
                 if patient_db is None:
                     raise PatientNotFoundError(patient_id)
 
-                patient_db.sqlmodel_update(patient_update.metadata)
+                patient_db.sqlmodel_update(patient_update.metadata.model_dump(exclude_unset=True))
                 session.add(patient_db)
 
         if patient_update.info is not None:
