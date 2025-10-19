@@ -1,12 +1,14 @@
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Query, status
-from fastapi_pagination import Page, paginate
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlmodel import apaginate
 
 from app.core.exceptions import PatientNotFoundError
 from app.model import Patient, PatientBrief, PatientCreate, PatientUpdate
 from app.service import PatientService
 
+from ..dependencies import DatabaseReadonlySession
 from ..util import build_responses
 
 patient_router = APIRouter(prefix="/patients", tags=["patients"])
@@ -15,10 +17,17 @@ patient_router = APIRouter(prefix="/patients", tags=["patients"])
 @patient_router.get(
     "",
     status_code=status.HTTP_200_OK,
-    summary="Get list of all patients",
+    summary="Get paginated list of all patients",
 )
-async def get_all_patients() -> Page[PatientBrief]:
-    return cast(Page[PatientBrief], paginate(await PatientService.get_all()))
+async def get_all_patients(session: DatabaseReadonlySession) -> Page[PatientBrief]:
+    return cast(
+        Page[PatientBrief],
+        await apaginate(
+            session=session,
+            query=PatientService.get_all_statement(),
+            transformer=PatientService.transform_all_for_pagination,
+        ),
+    )
 
 
 @patient_router.post(

@@ -1,20 +1,20 @@
 from functools import cached_property
-from pathlib import Path
 
 from pydantic import BaseModel, Field
 from pydantic_config import SettingsConfig, SettingsModel
 
+from .paths import Paths
+
 ENV_PREFIX = "ITELMA__"
 ENV_SEPARATOR = "__"
-
-RESOURCE_DIR = Path("resources")
-CONFIG_PATH = RESOURCE_DIR / "config.yml"
 
 
 class ServerConfig(BaseModel):
     title: str
     allow_origins_raw: str = Field(validation_alias="allow_origins")
     openapi_tag_list: list[str] = Field(validation_alias="openapi_tags")
+
+    part_cache_size: int
 
     @cached_property
     def allow_origins(self) -> list[str]:
@@ -52,7 +52,7 @@ class ConfigModel(SettingsModel):
         case_sensitive=False,
         env_prefix=ENV_PREFIX,
         env_nested_delimiter=ENV_SEPARATOR,
-        config_file=CONFIG_PATH,
+        config_file=Paths.internal.config,
         extra="allow",
     )
 

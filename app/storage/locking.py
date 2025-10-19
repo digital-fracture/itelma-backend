@@ -71,8 +71,6 @@ class LockManager:
 
 
 class Lock:
-    patient_list = "patients"
-
     @staticmethod
     @lru_cache
     def patient(patient_id: int) -> str:

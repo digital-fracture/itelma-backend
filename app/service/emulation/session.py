@@ -1,6 +1,6 @@
 import asyncio
-import contextlib
 import random
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +26,7 @@ from app.model import (
     EmulationState,
     EmulationStatus,
     ExaminationPartInterval,
-    ExaminationPartStats,
+    ExaminationStats,
 )
 from app.util import AsyncRWLock
 
@@ -240,8 +240,8 @@ class EmulationSession:
         while True:
             await self._wait_for_sending_status()
 
-            with contextlib.suppress(ValueError):
-                new_prediction = await analysis.predict(self._memory)
+            with suppress(ValueError):
+                new_prediction = await analysis.predict(self._memory.total_sent_data())
 
                 await self._broadcast(EmulationMessagePrediction(prediction=new_prediction))
                 async with self._global_lock.write():
@@ -280,7 +280,7 @@ class EmulationSession:
         while True:
             await self._wait_for_sending_status()
 
-            new_stats = ExaminationPartStats()
+            new_stats = ExaminationStats()
 
             await self._broadcast(EmulationMessageStats(stats=new_stats))
             async with self._global_lock.write():

@@ -1,7 +1,15 @@
-from pydantic import BaseModel
+from enum import StrEnum
+
+from pydantic import BaseModel, Field
 
 
-class ExaminationPartStats(BaseModel):
+class OverallState(StrEnum):
+    STABLE = "стабильное состояние"
+    ATTENTION = "требуется внимание"
+    CRITICAL = "критическое состояние"
+
+
+class ExaminationStats(BaseModel):
     bpm_average: float = 0
     uterus_average: float = 0
 
@@ -29,3 +37,10 @@ class EmulationPrediction(BaseModel):
     messages: list[str]
     bpm_average: float
     bpm_min: float
+
+
+class ExaminationVerdict(BaseModel):
+    overall_status: OverallState = OverallState.STABLE
+    recommendations: list[str] = Field(default_factory=list)
+    attention_zones: list[str] = Field(default_factory=list)
+    risk_zones: list[str] = Field(default_factory=list)

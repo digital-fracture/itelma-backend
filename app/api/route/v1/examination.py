@@ -25,7 +25,11 @@ examination_router = APIRouter(prefix="/patients/{patient_id}/examinations", tag
 async def create_examination(
     patient_id: int, file: Annotated[UploadFile, File(media_type="application/zip")]
 ) -> ExaminationBrief:
-    if file.content_type != "application/zip":
+    if (
+        file.content_type
+        and file.content_type != "application/octet-stream"
+        and "zip" not in file.content_type.split("/")[-1]
+    ):
         raise UnknownFileTypeError(file)
 
     return await ExaminationService.create(patient_id, file)

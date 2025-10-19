@@ -51,7 +51,21 @@ async def unzip(source: Path, destination: Path) -> None:
 
 
 @logfire.instrument
-async def load_yaml(path: Path) -> dict[Any, Any]:
+async def read_text(path: Path) -> str:
+    """Read text from a file asynchronously."""
+    async with aiofiles.open(path) as file:
+        return await file.read()
+
+
+@logfire.instrument
+async def write_text(contents: str, path: Path) -> None:
+    """Write text to a file asynchronously."""
+    async with aiofiles.open(path, "w") as file:
+        await file.write(contents)
+
+
+@logfire.instrument
+async def load_yaml(path: Path) -> dict[Any, Any] | list[Any]:
     """Read YAML from file asynchronously."""
     async with aiofiles.open(path) as file:
         yaml_str = await file.read()
@@ -63,7 +77,7 @@ async def load_yaml(path: Path) -> dict[Any, Any]:
 
 
 @logfire.instrument
-async def dump_yaml(data: dict[Any, Any], path: Path) -> None:
+async def dump_yaml(data: dict[Any, Any] | list[Any], path: Path) -> None:
     """Write YAML to file asynchronously."""
     loop = asyncio.get_running_loop()
     yaml_str: str = await loop.run_in_executor(

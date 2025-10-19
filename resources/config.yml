@@ -28,6 +28,7 @@ server:
     - patients
     - examinations
     - emulation
+  part_cache_size: 128
 
 logfire:
   service_name: backend

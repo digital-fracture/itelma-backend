@@ -1,103 +1,114 @@
-from typing import ClassVar
-
-import aiofiles
 import aiofiles.os
 import logfire
+from sqlmodel import select
+
+# noinspection PyProtectedMember
+from sqlmodel.sql._expression_select_cls import SelectBase
 
 from app.core import Paths
 from app.core.exceptions import PatientNotFoundError
 from app.model import (
     Patient,
-    PatientBrief,
     PatientCreate,
+    PatientDb,
     PatientInfo,
-    PatientPredictions,
+    PatientMetadata,
     PatientUpdate,
 )
 
 from . import util
+from .database import start_readonly_session, start_transaction
 from .locking import Lock, LockManager
 
 
+# noinspection Pydantic
 class PatientStorage:
-    _id_to_name: ClassVar[dict[int, str]]
-
     @classmethod
-    @logfire.instrument
-    async def initialize(cls) -> None:
-        async with LockManager.read(Lock.patient_list):
-            cls._id_to_name = await util.load_yaml(Paths.storage.patient_names_file)
+    def get_all_statement(cls) -> SelectBase[PatientDb]:
+        return select(PatientDb).order_by(PatientDb.id.desc())  # type: ignore
 
     @classmethod
     @logfire.instrument(record_return=True)
-    async def check_exists(cls, patient_id: int, *, throw: bool = True) -> bool:
-        async with LockManager.read(Lock.patient_list):
-            if patient_id not in cls._id_to_name:
-                if throw:
-                    raise PatientNotFoundError(patient_id)
-                return False
+    async def check_exists(cls, patient_id: int, *, raise_exception: bool = True) -> bool:
+        async with start_readonly_session() as session:
+            patient_db = await session.get(PatientDb, patient_id)
+            exists = patient_db is not None
+
+        if not exists:
+            if raise_exception:
+                raise PatientNotFoundError(patient_id)
+            return False
 
         return True
 
     @classmethod
     @logfire.instrument(record_return=True)
-    async def create(cls, patient: PatientCreate, patient_id: int | None = None) -> Patient:
-        if patient_id is None:
-            async with LockManager.read(Lock.patient_list):
-                patient_id = max(cls._id_to_name.keys(), default=0) + 1
+    async def create(cls, patient_create: PatientCreate, patient_id: int | None = None) -> Patient:
+        patient_db = PatientDb.model_validate(patient_create.metadata)
+        if patient_id is not None:
+            patient_db.id = patient_id
 
-        async with LockManager.write(Lock.patient_list):
-            cls._id_to_name[patient_id] = patient.name
-            await util.dump_yaml(cls._id_to_name, Paths.storage.patient_names_file)
+        async with start_transaction() as session:
+            session.add(patient_db)
+            await session.flush()
+            patient_id = patient_db.id
 
         async with LockManager.write(Lock.patient(patient_id)):
             await aiofiles.os.makedirs(Paths.storage.patient_dir(patient_id))
             await aiofiles.os.makedirs(Paths.storage.all_examinations_dir(patient_id))
 
             await util.dump_yaml(
-                patient.info.model_dump(exclude_unset=True),
+                patient_create.info.model_dump(exclude_unset=True),
                 Paths.storage.patient_info_file(patient_id),
             )
-            await util.create_empty(Paths.storage.patient_predictions_file(patient_id))
-
-        return Patient(id=patient_id, name=patient.name, info=patient.info)
-
-    @classmethod
-    @logfire.instrument(record_return=True)
-    async def get_all(cls) -> list[PatientBrief]:
-        async with LockManager.read(Lock.patient_list):
-            return [PatientBrief(id=p_id, name=name) for p_id, name in cls._id_to_name.items()]
-
-    @classmethod
-    @logfire.instrument(record_return=True)
-    async def get_by_id(cls, patient_id: int) -> Patient:
-        await cls.check_exists(patient_id)
-
-        async with LockManager.read(Lock.patient_list):
-            name = cls._id_to_name[patient_id]
-
-        async with LockManager.read(Lock.patient(patient_id)):
-            raw_info = await util.load_yaml(Paths.storage.patient_info_file(patient_id))
-            raw_predictions = await util.load_yaml(
-                Paths.storage.patient_predictions_file(patient_id)
+            await util.write_text(
+                patient_create.comment,
+                Paths.storage.patient_comment_file(patient_id),
             )
 
         return Patient(
             id=patient_id,
-            name=name,
+            metadata=patient_create.metadata,
+            info=patient_create.info,
+            comment=patient_create.comment,
+        )
+
+    @classmethod
+    @logfire.instrument(record_return=True)
+    async def get_by_id(cls, patient_id: int) -> Patient:
+        async with start_readonly_session() as session:
+            patient_db = await session.get(PatientDb, patient_id)
+            if patient_db is None:
+                raise PatientNotFoundError(patient_id)
+
+        async with LockManager.read(Lock.patient(patient_id)):
+            raw_info = await util.load_yaml(Paths.storage.patient_info_file(patient_id))
+            comment = await util.read_text(Paths.storage.patient_comment_file(patient_id))
+
+        return Patient(
+            id=patient_id,
+            metadata=PatientMetadata.model_validate(patient_db),
             info=PatientInfo.model_validate(raw_info),
-            predictions=PatientPredictions.model_validate(raw_predictions),
+            comment=comment,
         )
 
     @classmethod
     @logfire.instrument
-    async def update_by_id(cls, patient_id: int, patient_update: PatientUpdate) -> None:
-        await cls.check_exists(patient_id)
+    async def update_by_id(
+        cls, patient_id: int, patient_update: PatientUpdate, *, _check: bool = True
+    ) -> None:
+        if _check:
+            await cls.check_exists(patient_id)
 
-        if patient_update.name is not None:
-            async with LockManager.write(Lock.patient_list):
-                cls._id_to_name[patient_id] = patient_update.name
-                await util.dump_yaml(cls._id_to_name, Paths.storage.patient_names_file)
+        if patient_update.metadata is not None:
+            async with start_transaction() as session:
+                patient_db = await session.get(PatientDb, patient_id)
+
+                if patient_db is None:
+                    raise PatientNotFoundError(patient_id)
+
+                patient_db.sqlmodel_update(patient_update.metadata)
+                session.add(patient_db)
 
         if patient_update.info is not None:
             async with LockManager.write(Lock.patient(patient_id)):

@@ -3,9 +3,12 @@ from enum import StrEnum
 from functools import cached_property
 
 from pydantic import BaseModel, Field, computed_field
+from sqlmodel import Field as SQLModelField
+from sqlmodel import SQLModel
 
 from app.core import Config
 
+from .analysis import ExaminationVerdict, OverallState
 from .examination import ExaminationBrief
 
 
@@ -43,6 +46,12 @@ class BloodGasItem(BaseModel):
         return Normal.NORMAL
 
 
+class PatientMetadata(BaseModel):
+    name: str = ""
+    unread: bool = False
+    overall_state: OverallState = OverallState.STABLE
+
+
 class PatientInfo(BaseModel):
     """Clinical information about a patient."""
 
@@ -53,28 +62,36 @@ class PatientInfo(BaseModel):
     blood_gas: list[BloodGasItem] = Field(default_factory=list)
 
 
-class PatientPredictions(BaseModel):
-    pass
-
-
 class PatientBrief(BaseModel):
     id: int
-    name: str = ""
+    metadata: PatientMetadata
+
     ongoing_examination_id: int | None = None
 
 
 class Patient(PatientBrief):
-    info: PatientInfo = Field(default_factory=PatientInfo)
-    predictions: PatientPredictions = Field(default_factory=PatientPredictions)
+    info: PatientInfo
+    comment: str
 
     examinations: list[ExaminationBrief] = Field(default_factory=list)
+    last_verdict: ExaminationVerdict | None = None
 
 
 class PatientCreate(BaseModel):
-    name: str = ""
+    metadata: PatientMetadata = Field(default_factory=PatientMetadata)
     info: PatientInfo = Field(default_factory=PatientInfo)
+    comment: str = ""
 
 
 class PatientUpdate(BaseModel):
-    name: str | None = None
+    metadata: PatientMetadata | None = None
     info: PatientInfo | None = None
+    comment: str | None = None
+
+
+class _PatientIdModel(SQLModel):
+    id: int | None = SQLModelField(default=None, primary_key=True)
+
+
+class PatientDb(PatientMetadata, _PatientIdModel, table=True):
+    __tablename__ = "patient"

@@ -1,5 +1,5 @@
 import asyncio
-import contextlib
+from contextlib import suppress
 
 import logfire
 from fastapi import APIRouter, WebSocket, WebSocketException
@@ -37,7 +37,7 @@ async def emulation_start(websocket: WebSocket, patient_id: int, examination_id:
 
             for task in pending:
                 task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
+                with suppress(asyncio.CancelledError):
                     await task
             for task in done:
                 task.result()  # can raise exceptions - this is intentional
@@ -71,7 +71,7 @@ async def _receiver(websocket: WebSocket, queue_in: EmulationQueueIn) -> None:
     while raw_message := await websocket.receive_json():
         logfire.info("Received message", message=raw_message)
 
-        with contextlib.suppress(ValidationError):
+        with suppress(ValidationError):
             validated_message = EmulationMessageCommand.model_validate(raw_message)
             await queue_in.put(validated_message)
 

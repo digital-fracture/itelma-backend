@@ -21,19 +21,27 @@ __all__ = [
     "ExaminationBrief",
     "ExaminationMetadata",
     "ExaminationPart",
-    "ExaminationPartData",
     "ExaminationPartInterval",
-    "ExaminationPartStats",
-    "ExaminationPredictions",
+    "ExaminationPlot",
+    "ExaminationStats",
+    "ExaminationVerdict",
+    "OverallState",
     "Patient",
     "PatientBrief",
     "PatientCreate",
+    "PatientDb",
     "PatientInfo",
-    "PatientPredictions",
+    "PatientMetadata",
     "PatientUpdate",
     "PlotPoint",
 ]
-from .analysis import EmulationPrediction, ExaminationPartInterval, ExaminationPartStats
+from .analysis import (
+    EmulationPrediction,
+    ExaminationPartInterval,
+    ExaminationStats,
+    ExaminationVerdict,
+    OverallState,
+)
 from .emulation import (
     EmulationCommand,
     EmulationMessageClose,
@@ -57,15 +65,15 @@ from .examination import (
     ExaminationBrief,
     ExaminationMetadata,
     ExaminationPart,
-    ExaminationPartData,
-    ExaminationPredictions,
+    ExaminationPlot,
 )
 from .misc import Channel, PlotPoint
 from .patient import (
     Patient,
     PatientBrief,
     PatientCreate,
+    PatientDb,
     PatientInfo,
-    PatientPredictions,
+    PatientMetadata,
     PatientUpdate,
 )

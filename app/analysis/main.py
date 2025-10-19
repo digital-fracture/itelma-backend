@@ -1,21 +1,15 @@
 import asyncio
 
 from app.core import Paths
-from app.model import EmulationPrediction, EmulationState
+from app.model import EmulationPrediction, ExaminationPlot
 
 from .predictions import infer_last_window_from_lists
 
 
-def predict_sync(emulation_state: EmulationState) -> EmulationPrediction:
+def predict_sync(plot: ExaminationPlot) -> EmulationPrediction:
     messages, details = infer_last_window_from_lists(
-        bpm_pairs=(
-            emulation_state.part_data_log.bpm
-            + emulation_state.shifted_plot(emulation_state.sent_part_data.bpm)
-        ),
-        uc_pairs=(
-            emulation_state.part_data_log.uterus
-            + emulation_state.shifted_plot(emulation_state.sent_part_data.uterus)
-        ),
+        bpm_pairs=plot.bpm,
+        uc_pairs=plot.uterus,
         ckpt_path=Paths.ml.predictor_model,
     )
 
@@ -26,5 +20,5 @@ def predict_sync(emulation_state: EmulationState) -> EmulationPrediction:
     )
 
 
-async def predict(emulation_state: EmulationState) -> EmulationPrediction:
-    return await asyncio.to_thread(predict_sync, emulation_state)
+async def predict(plot: ExaminationPlot) -> EmulationPrediction:
+    return await asyncio.to_thread(predict_sync, plot)
