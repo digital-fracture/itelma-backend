@@ -256,7 +256,7 @@ def infer_last_window_from_lists(
     thr_late: float = 0.7,
     thr_h5: float = 0.7,
     thr_h15: float = 0.7,
-    min_required: int = 120,
+    min_required: int = 60,
     max_window: int = 600,
 ) -> tuple[list[str], dict[str, ...]]:
     """

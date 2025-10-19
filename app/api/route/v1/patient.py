@@ -1,6 +1,6 @@
-from typing import Annotated, cast
+from typing import cast
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, status
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlmodel import apaginate
 
@@ -45,11 +45,7 @@ async def create_patient(patient_create: PatientCreate) -> Patient:
     responses=build_responses(PatientNotFoundError),
     summary="Get detailed information about a patient",
 )
-async def get_patient(
-    patient_id: int,
-    *,
-    zip_: Annotated[bool, Query(alias="zip")] = False,  # noqa: ARG001
-) -> Patient:
+async def get_patient(patient_id: int) -> Patient:
     return await PatientService.get_by_id(patient_id)
 
 

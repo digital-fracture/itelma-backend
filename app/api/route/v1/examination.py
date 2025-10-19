@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Query, UploadFile, status
+from fastapi import APIRouter, File, UploadFile, status
 
 from app.core.exceptions import (
     ExaminationNotFoundError,
@@ -41,12 +41,7 @@ async def create_examination(
     responses=build_responses(PatientNotFoundError, ExaminationNotFoundError),
     summary="Get information about an examination",
 )
-async def get_examination(
-    patient_id: int,
-    examination_id: int,
-    *,
-    zip_: Annotated[bool, Query(alias="zip")] = False,  # noqa: ARG001
-) -> Examination:
+async def get_examination(patient_id: int, examination_id: int) -> Examination:
     return await ExaminationService.get_by_id(patient_id, examination_id)
 
 
