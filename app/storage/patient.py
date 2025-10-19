@@ -12,7 +12,7 @@ from app.model import (
     PatientCreate,
     PatientDb,
     PatientInfo,
-    PatientMetadata,
+    PatientMiscData,
     PatientUpdate,
 )
 
@@ -44,7 +44,7 @@ class PatientStorage:
     @classmethod
     @logfire.instrument(record_return=True)
     async def create(cls, patient_create: PatientCreate, patient_id: int | None = None) -> Patient:
-        patient_db = PatientDb.model_validate(patient_create.metadata)
+        patient_db = PatientDb.model_validate(patient_create.misc_data)
         if patient_id is not None:
             patient_db.id = patient_id
 
@@ -68,7 +68,7 @@ class PatientStorage:
 
         return Patient(
             id=patient_id,
-            metadata=patient_create.metadata,
+            misc_data=patient_create.misc_data,
             info=patient_create.info,
             comment=patient_create.comment,
         )
@@ -81,7 +81,7 @@ class PatientStorage:
             if patient_db is None:
                 raise PatientNotFoundError(patient_id)
 
-            metadata = PatientMetadata(**patient_db.model_dump())
+            misc_data = PatientMiscData(**patient_db.model_dump())
 
         async with LockManager.read(Lock.patient(patient_id)):
             raw_info = await util.load_yaml(Paths.storage.patient_info_file(patient_id))
@@ -89,7 +89,7 @@ class PatientStorage:
 
         return Patient(
             id=patient_id,
-            metadata=metadata,
+            misc_data=misc_data,
             info=PatientInfo.model_validate(raw_info),
             comment=comment,
         )
@@ -102,14 +102,14 @@ class PatientStorage:
         if _check:
             await cls.check_exists(patient_id)
 
-        if patient_update.metadata is not None:
+        if patient_update.misc_data is not None:
             async with start_transaction() as session:
                 patient_db = await session.get(PatientDb, patient_id)
 
                 if patient_db is None:
                     raise PatientNotFoundError(patient_id)
 
-                patient_db.sqlmodel_update(patient_update.metadata.model_dump(exclude_unset=True))
+                patient_db.sqlmodel_update(patient_update.misc_data.model_dump(exclude_unset=True))
                 session.add(patient_db)
 
         if patient_update.info is not None:

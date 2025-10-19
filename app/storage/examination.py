@@ -25,7 +25,7 @@ from app.model import (
     ExaminationStats,
     ExaminationVerdict,
     OverallState,
-    PatientMetadata,
+    PatientMiscData,
     PatientUpdate,
     PlotPoint,
 )
@@ -289,5 +289,5 @@ class ExaminationStorage:
 
         await PatientStorage.update_by_id(
             patient_id,
-            PatientUpdate(metadata=PatientMetadata(overall_state=verdict.overall_status)),
+            PatientUpdate(misc_data=PatientMiscData(overall_state=verdict.overall_status)),
         )

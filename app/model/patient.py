@@ -46,7 +46,7 @@ class BloodGasItem(BaseModel):
         return Normal.NORMAL
 
 
-class PatientMetadata(BaseModel):
+class PatientMiscData(BaseModel):
     name: str = ""
     unread: bool = False
     overall_state: OverallState = OverallState.STABLE
@@ -64,7 +64,11 @@ class PatientInfo(BaseModel):
 
 class PatientBrief(BaseModel):
     id: int
-    metadata: PatientMetadata
+    misc_data: PatientMiscData
+
+    @computed_field
+    def name(self) -> str:
+        return self.misc_data.name
 
     ongoing_examination_id: int | None = None
 
@@ -78,13 +82,13 @@ class Patient(PatientBrief):
 
 
 class PatientCreate(BaseModel):
-    metadata: PatientMetadata = Field(default_factory=PatientMetadata)
+    misc_data: PatientMiscData = Field(default_factory=PatientMiscData)
     info: PatientInfo = Field(default_factory=PatientInfo)
     comment: str = ""
 
 
 class PatientUpdate(BaseModel):
-    metadata: PatientMetadata | None = None
+    misc_data: PatientMiscData | None = None
     info: PatientInfo | None = None
     comment: str | None = None
 
@@ -93,5 +97,5 @@ class _PatientIdModel(SQLModel):
     id: int | None = SQLModelField(default=None, primary_key=True)
 
 
-class PatientDb(PatientMetadata, _PatientIdModel, table=True):
+class PatientDb(PatientMiscData, _PatientIdModel, table=True):
     __tablename__ = "patient"

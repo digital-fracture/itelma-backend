@@ -1,7 +1,7 @@
 import logfire
 from fastapi import UploadFile
 
-from app.model import Examination, ExaminationPart, PatientCreate, PatientMetadata, PatientUpdate
+from app.model import Examination, ExaminationPart, PatientCreate, PatientMiscData, PatientUpdate
 from app.storage import ExaminationStorage, PatientStorage
 
 
@@ -9,16 +9,16 @@ class ExaminationService:
     @staticmethod
     @logfire.instrument(record_return=True)
     async def create(patient_id: int, examination_upload_file: UploadFile) -> Examination:
-        metadata_unread = PatientMetadata(unread=True)
+        misc_data_unread = PatientMiscData(unread=True)
         if not (await PatientStorage.check_exists(patient_id, raise_exception=False)):
             await PatientStorage.create(
-                PatientCreate(metadata=metadata_unread),
+                PatientCreate(misc_data=misc_data_unread),
                 patient_id=patient_id,
             )
         else:
             await PatientStorage.update_by_id(
                 patient_id,
-                PatientUpdate(metadata=metadata_unread),
+                PatientUpdate(misc_data=misc_data_unread),
                 _check=False,
             )
 

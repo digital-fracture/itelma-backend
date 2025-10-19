@@ -31,7 +31,7 @@ __all__ = [
     "PatientCreate",
     "PatientDb",
     "PatientInfo",
-    "PatientMetadata",
+    "PatientMiscData",
     "PatientUpdate",
     "PlotPoint",
 ]
@@ -74,6 +74,6 @@ from .patient import (
     PatientCreate,
     PatientDb,
     PatientInfo,
-    PatientMetadata,
+    PatientMiscData,
     PatientUpdate,
 )

@@ -10,7 +10,7 @@ from app.model import (
     PatientBrief,
     PatientCreate,
     PatientDb,
-    PatientMetadata,
+    PatientMiscData,
     PatientUpdate,
 )
 from app.storage import ExaminationStorage, PatientStorage
@@ -31,7 +31,7 @@ class PatientService:
     async def transform_all_for_pagination(patient_dbs: Sequence[PatientDb]) -> list[PatientBrief]:
         """Return all patients sorted by ID descendingly."""
         patients = [
-            PatientBrief(id=patient_db.id, metadata=PatientMetadata.model_validate(patient_db))
+            PatientBrief(id=patient_db.id, misc_data=PatientMiscData.model_validate(patient_db))
             for patient_db in patient_dbs
         ]
         EmulationService.fill_ongoing_examination(patients)
