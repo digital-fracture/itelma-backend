@@ -122,3 +122,10 @@ class PatientStorage:
                 )
 
                 await util.dump_yaml(updated_info.model_dump(exclude_unset=True), info_path)
+
+        if patient_update.comment is not None:
+            async with LockManager.write(Lock.patient(patient_id)):
+                await util.write_text(
+                    patient_update.comment,
+                    Paths.storage.patient_comment_file(patient_id),
+                )
