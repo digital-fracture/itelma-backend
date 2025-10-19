@@ -17,6 +17,7 @@ import yaml
 from fastapi import UploadFile
 
 from app.core import Paths
+from app.core.exceptions import UnsupportedFileTypeError
 
 CHUNK_SIZE = 64 * 1024  # 64KB
 
@@ -101,32 +102,70 @@ async def rename_to_numbers(directory: Path) -> None:
             tg.create_task(aiofiles.os.rename(old_path, new_path))
 
 
+async def fix_extracted_examination(directory: Path) -> None:
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(executor, _fix_extracted_examination_sync, directory)
+
+
+async def rmtree(directory: Path) -> None:
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(executor, partial(shutil.rmtree, ignore_errors=True), directory)
+
+
 def _unzip_sync(source: Path, destination: Path) -> None:
-    try:
-        with zipfile.ZipFile(source, "r") as z:
-            for member in z.infolist():
-                if member.is_dir():
-                    continue
+    with zipfile.ZipFile(source, "r") as z:
+        for member in z.infolist():
+            if member.is_dir():
+                continue
 
-                safe = _safe_name(member.filename)
+            safe = _safe_name(member.filename)
 
-                if not safe:
-                    continue
+            if not safe:
+                continue
 
-                out_path = Path.joinpath(destination, safe)
-                out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path = Path.joinpath(destination, safe)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
 
-                with z.open(member, "r") as source_file, out_path.open("wb") as destination_file:
-                    shutil.copyfileobj(source_file, destination_file, CHUNK_SIZE)
-    except Exception:
-        shutil.rmtree(destination, ignore_errors=True)
-        raise
+            with z.open(member, "r") as source_file, out_path.open("wb") as destination_file:
+                shutil.copyfileobj(source_file, destination_file, CHUNK_SIZE)
 
 
 def _safe_name(name: str) -> Path | None:
     path = Path(name)
     parts = [part for part in path.parts if part not in ("", ".", "..")]
     return Path(*parts) if parts else None
+
+
+def _fix_extracted_examination_sync(directory: Path) -> None:
+    # fixing case where all files are in a single subdirectory
+    if len(tuple(directory.iterdir())) == 1 and (only_subdir := next(directory.iterdir())).is_dir():
+        for item in only_subdir.iterdir():
+            shutil.move(item, directory / item.name)
+        only_subdir.rmdir()
+
+    bpm_part_count: int | None = None
+    uterus_part_count: int | None = None
+    for child in directory.iterdir():
+        if child.is_dir() and child.name == "bpm":
+            bpm_children = tuple(child.iterdir())
+
+            for bpm_child in bpm_children:
+                if not bpm_child.is_file() or bpm_child.suffix.lower() != ".csv":
+                    raise UnsupportedFileTypeError
+
+            bpm_part_count = len(bpm_children)
+
+        if child.is_dir() and child.name == "uterus":
+            uterus_children = tuple(child.iterdir())
+
+            for uterus_child in uterus_children:
+                if not uterus_child.is_file() or uterus_child.suffix.lower() != ".csv":
+                    raise UnsupportedFileTypeError
+
+            uterus_part_count = len(uterus_children)
+
+    if bpm_part_count is None or uterus_part_count is None or bpm_part_count != uterus_part_count:
+        raise UnsupportedFileTypeError
 
 
 def _represent_strenum(dumper: yaml.SafeDumper, data: StrEnum) -> yaml.ScalarNode:

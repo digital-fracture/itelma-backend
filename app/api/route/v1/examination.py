@@ -6,7 +6,7 @@ from app.core.exceptions import (
     ExaminationNotFoundError,
     ExaminationPartNotFoundError,
     PatientNotFoundError,
-    UnknownFileTypeError,
+    UnsupportedFileTypeError,
 )
 from app.model import Examination, ExaminationBrief, ExaminationPart
 from app.service.examination import ExaminationService
@@ -19,7 +19,7 @@ examination_router = APIRouter(prefix="/patients/{patient_id}/examinations", tag
 @examination_router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    responses=build_responses(PatientNotFoundError, UnknownFileTypeError),
+    responses=build_responses(PatientNotFoundError, UnsupportedFileTypeError),
     summary="Upload a new examination for a patient (and create new empty patient if needed)",
 )
 async def create_examination(
@@ -30,7 +30,7 @@ async def create_examination(
         and file.content_type != "application/octet-stream"
         and "zip" not in file.content_type.split("/")[-1]
     ):
-        raise UnknownFileTypeError(file)
+        raise UnsupportedFileTypeError(file)
 
     return await ExaminationService.create(patient_id, file)
 

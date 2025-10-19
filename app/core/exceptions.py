@@ -13,11 +13,11 @@ class AppBaseError(Exception):
         self.details = details
 
 
-class UnknownFileTypeError(AppBaseError):
+class UnsupportedFileTypeError(AppBaseError):
     status_code = status.HTTP_400_BAD_REQUEST
     message = "Unknown file type"
 
-    def __init__(self, file: UploadFile | None) -> None:
+    def __init__(self, file: UploadFile | None = None) -> None:
         super().__init__(
             {"filename": file.filename, "content_type": file.content_type} if file else None
         )

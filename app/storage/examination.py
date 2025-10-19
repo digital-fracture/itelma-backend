@@ -11,7 +11,11 @@ from fastapi import UploadFile
 
 from app import analysis
 from app.core import Config, Paths
-from app.core.exceptions import ExaminationNotFoundError, ExaminationPartNotFoundError
+from app.core.exceptions import (
+    ExaminationNotFoundError,
+    ExaminationPartNotFoundError,
+    UnsupportedFileTypeError,
+)
 from app.model import (
     Examination,
     ExaminationBrief,
@@ -73,7 +77,16 @@ class ExaminationStorage:
         examination_dir = Paths.storage.examination_dir(patient_id, examination_id)
 
         async with LockManager.write(Lock.patient_examination(patient_id, examination_id)):
-            await util.unzip(zip_path, examination_dir)
+            try:
+                await util.unzip(zip_path, examination_dir)
+                await util.fix_extracted_examination(examination_dir)
+            except UnsupportedFileTypeError:
+                await util.rmtree(examination_dir)
+                raise
+            except Exception as e:
+                await util.rmtree(examination_dir)
+                raise UnsupportedFileTypeError from e
+
             await asyncio.gather(
                 util.rename_to_numbers(
                     Paths.storage.examination_bpm_dir(patient_id, examination_id)
