@@ -1,3 +1,3 @@
-__all__ = ["predict"]
+__all__ = ["analyze"]
 
-from .main import predict
+from .main import analyze

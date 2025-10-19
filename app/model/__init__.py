@@ -33,6 +33,7 @@ __all__ = [
     "PatientInfo",
     "PatientMiscData",
     "PatientUpdate",
+    "PipelineResult",
     "PlotPoint",
 ]
 from .analysis import (
@@ -41,6 +42,7 @@ from .analysis import (
     ExaminationStats,
     ExaminationVerdict,
     OverallState,
+    PipelineResult,
 )
 from .emulation import (
     EmulationCommand,

@@ -24,7 +24,7 @@ class ExaminationStats(BaseModel):
     mild_bradycardia_seconds: float = 0
     severe_bradycardia_seconds: float = 0
 
-    condition: str = "Норма"
+    condition: str = "Нормальное состояние"
 
 
 class ExaminationPartInterval(BaseModel):
@@ -44,3 +44,10 @@ class ExaminationVerdict(BaseModel):
     recommendations: list[str] = Field(default_factory=list)
     attention_zones: list[str] = Field(default_factory=list)
     risk_zones: list[str] = Field(default_factory=list)
+
+
+class PipelineResult(BaseModel):
+    prediction: EmulationPrediction | None
+    intervals: list[ExaminationPartInterval]
+    stats: ExaminationStats
+    verdict: ExaminationVerdict | None

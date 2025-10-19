@@ -24,7 +24,6 @@ from app.model import (
     ExaminationPlot,
     ExaminationStats,
     ExaminationVerdict,
-    OverallState,
     PatientMiscData,
     PatientUpdate,
     PlotPoint,
@@ -218,6 +217,23 @@ class ExaminationStorage:
 
         return ExaminationPlot(bpm=bpm_task.result(), uterus=uterus_task.result())
 
+    @classmethod
+    @logfire.instrument
+    async def read_intervals(
+        cls, patient_id: int, examination_id: int, part_index: int
+    ) -> list[ExaminationPartInterval]:
+        intervals_path = Paths.storage.examination_part_intervals_file(
+            patient_id, examination_id, part_index
+        )
+
+        if not await aiofiles.os.path.exists(intervals_path):
+            raise ExaminationPartNotFoundError(patient_id, examination_id, part_index)
+
+        raw_intervals = await util.load_yaml(intervals_path)
+        return [
+            ExaminationPartInterval.model_validate(raw_interval) for raw_interval in raw_intervals
+        ]
+
     @staticmethod
     async def _read_csv(path: Path) -> list[PlotPoint]:
         async with aiofiles.open(path) as file:
@@ -240,26 +256,18 @@ class ExaminationStorage:
         )
         concatenated_plot: ExaminationPlot = ExaminationPlot.concatenate(*all_plots)
 
-        intervals_per_part: list[list[ExaminationPartInterval]] = [  # TODO: here would be gather
-            [
-                ExaminationPartInterval(start=5, end=10, message="интервал 1"),
-                ExaminationPartInterval(start=15, end=20, message="интервал 2"),
-            ]
-            for index, _ in enumerate(all_plots, start=1)
+        big_analysis_result = await analysis.analyze(concatenated_plot)
+
+        intervals_per_part: list[list[ExaminationPartInterval]] = [
+            result.intervals
+            for result in await asyncio.gather(*(analysis.analyze(plot) for plot in all_plots))
         ]
 
-        stats = ExaminationStats(  # TODO: calculate real stats
-            bpm_average=concatenated_plot.bpm[0][1],
-            uterus_average=concatenated_plot.uterus[0][1],
-        )
-        predictions = await analysis.predict(concatenated_plot)  # noqa: F841
+        stats = big_analysis_result.stats
+        verdict = big_analysis_result.verdict
 
-        verdict = ExaminationVerdict(
-            overall_status=OverallState.ATTENTION,
-            recommendations=["рекомендация 1"],
-            attention_zones=["что-то в норме 1"],
-            risk_zones=["зона риска 1"],
-        )
+        if verdict is None:
+            verdict = ExaminationVerdict()
 
         async with (
             LockManager.write(Lock.patient_examination(patient_id, examination_id)),

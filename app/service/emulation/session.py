@@ -1,6 +1,4 @@
 import asyncio
-import random
-from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +23,6 @@ from app.model import (
     EmulationQueueOut,
     EmulationState,
     EmulationStatus,
-    ExaminationPartInterval,
-    ExaminationStats,
 )
 from app.util import AsyncRWLock
 
@@ -109,9 +105,7 @@ class EmulationSession:
         tasks = [
             asyncio.create_task(self._consumer(), name="emulation:consumer"),
             asyncio.create_task(self._producer(), name="emulation:producer"),
-            asyncio.create_task(self._predictor(), name="emulation:predictor"),
-            asyncio.create_task(self._statser(), name="emulation:statser"),
-            asyncio.create_task(self._intervaler(), name="emulation:intervaler"),
+            asyncio.create_task(self._analyzer(), name="emulation:analyzer"),
         ]
 
         await self._shutdown_event.wait()
@@ -236,57 +230,43 @@ class EmulationSession:
                     )
                 )
 
-    async def _predictor(self) -> None:
-        while True:
-            await self._wait_for_sending_status()
-
-            with suppress(ValueError):
-                new_prediction = await analysis.predict(self._memory.total_sent_data())
-
-                await self._broadcast(EmulationMessagePrediction(prediction=new_prediction))
-                async with self._global_lock.write():
-                    self._memory.sent_predictions.append(new_prediction)
-
-            await asyncio.sleep(INFERENCE_INTERVAL_SECONDS)
-
-    async def _intervaler(self) -> None:
-        await asyncio.sleep(20)
+    async def _analyzer(self) -> None:
+        last_interval_end = 0.0
 
         while True:
             await self._wait_for_sending_status()
 
-            async with self._global_lock.read():
-                last_sent_time = (
-                    self._memory.sent_part_data.bpm[-1][0]
-                    if self._memory.sent_part_data.bpm
-                    else 0.0
+            new_analysis = await analysis.analyze(self._memory.total_sent_data(), no_verdict=True)
+            if new_analysis.prediction is not None:
+                await self._broadcast(
+                    EmulationMessagePrediction(prediction=new_analysis.prediction)
                 )
 
-            new_interval = ExaminationPartInterval(
-                start=last_sent_time - 15,
-                end=last_sent_time - 5,
-                message="Пример интервала",
+            intervals = [
+                interval
+                for interval in new_analysis.intervals
+                if interval.start >= last_interval_end
+            ]
+            await asyncio.gather(
+                *(
+                    self._broadcast(EmulationMessageInterval(interval=interval))
+                    for interval in intervals
+                )
             )
 
-            await self._broadcast(EmulationMessageInterval(interval=new_interval))
+            await self._broadcast(EmulationMessageStats(stats=new_analysis.stats))
+
             async with self._global_lock.write():
-                self._memory.sent_intervals.append(new_interval)
+                if new_analysis.prediction is not None:
+                    self._memory.sent_predictions.append(new_analysis.prediction)
+                self._memory.sent_intervals.extend(new_analysis.intervals)
+                self._memory.last_stats = new_analysis.stats
 
-            await asyncio.sleep(random.randint(15, 30))  # noqa: S311
+            last_interval_end = max(
+                (interval.end for interval in new_analysis.intervals), default=last_interval_end
+            )
 
-    async def _statser(self) -> None:
-        await asyncio.sleep(3)
-
-        while True:
-            await self._wait_for_sending_status()
-
-            new_stats = ExaminationStats()
-
-            await self._broadcast(EmulationMessageStats(stats=new_stats))
-            async with self._global_lock.write():
-                self._memory.last_stats = new_stats
-
-            await asyncio.sleep(10)
+            await asyncio.sleep(INFERENCE_INTERVAL_SECONDS)
 
     async def _wait_for_sending_status(self) -> None:
         async with self._global_lock.read():

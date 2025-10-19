@@ -36,4 +36,7 @@ class ExaminationService:
         return ExaminationPart(
             index=part_index,
             data=await ExaminationStorage.read_part_plot(patient_id, examination_id, part_index),
+            intervals=await ExaminationStorage.read_intervals(
+                patient_id, examination_id, part_index
+            ),
         )
